@@ -1,0 +1,6 @@
+{
+  "name": "Ibad Store",
+  "description": "Platform Top Up Game, Pulsa, Token PLN, PPOB & Tagihan dengan Sistem Keamanan Berlapis, Enkripsi Kuat & Gateway Atlantic H2H.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

@@ -1,0 +1,196 @@
+import type {
+  ApiResponse,
+  User,
+  ProductItem,
+  TransactionRecord,
+  DepositOrder,
+  DepositMethod,
+  PostpaidInquiryResult,
+  SecurityAuditLog,
+} from '../types.js';
+
+const TOKEN_KEY = 'ibad_auth_token';
+
+export const authStorage = {
+  getToken: () => localStorage.getItem(TOKEN_KEY),
+  setToken: (token: string) => localStorage.setItem(TOKEN_KEY, token),
+  removeToken: () => localStorage.removeItem(TOKEN_KEY),
+};
+
+async function request<T = any>(endpoint: string, options: RequestInit = {}): Promise<ApiResponse<T>> {
+  const token = authStorage.getToken();
+  const headers: HeadersInit = {
+    'Content-Type': 'application/json',
+    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    ...(options.headers || {}),
+  };
+
+  try {
+    const res = await fetch(endpoint, {
+      ...options,
+      headers,
+    });
+
+    const data = await res.json();
+    return data;
+  } catch (err: any) {
+    return {
+      status: false,
+      message: 'Koneksi jaringan terputus atau respon tidak dapat diproses dengan aman.',
+      code: 500,
+    };
+  }
+}
+
+export const api = {
+  // Auth
+  register: (payload: { username: string; name: string; email: string; phone: string; password: string }) =>
+    request<{ user: User; token: string }>('/api/auth/register', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    }),
+
+  login: (payload: { identifier: string; password: string }) =>
+    request<{ user: User; token: string; isAdmin?: boolean }>('/api/auth/login', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    }),
+
+  adminLogin: (payload: { username: string; password: string }) =>
+    request<{ user: User; token: string; isAdmin: boolean }>('/api/auth/admin-login', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    }),
+
+  getMe: () => request<User>('/api/auth/me'),
+
+  logout: () => {
+    authStorage.removeToken();
+    return Promise.resolve({ status: true, message: 'Logged out' });
+  },
+
+  setPin: (pin: string) =>
+    request('/api/auth/set-pin', {
+      method: 'POST',
+      body: JSON.stringify({ pin }),
+    }),
+
+  // Products
+  getProducts: () => request<ProductItem[]>('/api/products'),
+  syncProducts: () => request<{ status: boolean; message: string; count?: number }>('/api/products/sync', { method: 'POST' }),
+
+  // Orders
+  createOrder: (payload: { code: string; target: string; zone?: string; payment_method: string; pin?: string }) =>
+    request<TransactionRecord>('/api/order/create', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    }),
+
+  checkOrder: (query: string) => request<TransactionRecord>(`/api/order/check/${encodeURIComponent(query)}`),
+
+  getOrderHistory: () => request<TransactionRecord[]>('/api/order/history'),
+
+  // Pascabayar Bills
+  inquireBill: (code: string, customer_no: string) =>
+    request<PostpaidInquiryResult>('/api/bill/inquiry', {
+      method: 'POST',
+      body: JSON.stringify({ code, customer_no }),
+    }),
+
+  payBill: (payload: {
+    code: string;
+    customer_no: string;
+    reff_id: string;
+    total_tagihan: number;
+    payment_method: string;
+    pin?: string;
+  }) =>
+    request<TransactionRecord>('/api/bill/pay', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    }),
+
+  // Deposits
+  getDepositMethods: () => request<DepositMethod[]>('/api/deposit/methods'),
+
+  createDeposit: (payload: { nominal: number; type: string; method: string }) =>
+    request<DepositOrder>('/api/deposit/create', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    }),
+
+  getDepositStatus: (id: string) => request<DepositOrder>(`/api/deposit/status/${encodeURIComponent(id)}`),
+
+  getDepositHistory: () => request<DepositOrder[]>('/api/deposit/history'),
+
+  cancelDeposit: (id: string) =>
+    request('/api/deposit/cancel', {
+      method: 'POST',
+      body: JSON.stringify({ id }),
+    }),
+
+  demoApproveDeposit: (id: string) =>
+    request('/api/deposit/demo-approve', {
+      method: 'POST',
+      body: JSON.stringify({ id }),
+    }),
+
+  // Public Security & Audit
+  getSecurityStats: () => request<any>('/api/security/stats'),
+  getSecurityLogs: () => request<SecurityAuditLog[]>('/api/security/logs'),
+
+  // ================= ADMIN SPECIAL API =================
+  getAdminMetrics: () => request<any>('/api/admin/metrics'),
+  getAdminTransactions: (status?: string, limit?: number) =>
+    request<TransactionRecord[]>(`/api/admin/transactions?status=${status || 'all'}&limit=${limit || 200}`),
+  updateAdminTransactionStatus: (payload: { id: string; status: string; sn?: string }) =>
+    request('/api/admin/transaction/update-status', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    }),
+  getAdminUsers: () => request<User[]>('/api/admin/users'),
+  updateAdminUserBalance: (payload: { userId: string; newBalance: number; reason?: string }) =>
+    request('/api/admin/user/balance', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    }),
+  updateAdminUserRole: (payload: { userId: string; role: 'user' | 'admin' }) =>
+    request('/api/admin/user/role', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    }),
+  getAdminDeposits: () => request<DepositOrder[]>('/api/admin/deposits'),
+  actionAdminDeposit: (payload: { id: string; action: 'approve' | 'reject' }) =>
+    request('/api/admin/deposit/action', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    }),
+  getAdminGatewayBalance: () => request<any>('/api/admin/gateway-balance'),
+  getAdminAtlanticProfile: () => request<any>('/api/admin/atlantic/profile'),
+  getAdminBankList: () => request<any>('/api/admin/transfer/banks'),
+  adminCheckBankAccount: (payload: { bank_code: string; account_number: string }) =>
+    request<any>('/api/admin/transfer/check-account', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    }),
+  adminCreateTransfer: (payload: {
+    ref_id?: string;
+    kode_bank: string;
+    nomor_akun: string;
+    nama_pemilik: string;
+    nominal: number;
+    email?: string;
+    phone?: string;
+    note?: string;
+  }) =>
+    request<any>('/api/admin/transfer/create', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    }),
+  adminCheckTransferStatus: (id: string) =>
+    request<any>('/api/admin/transfer/status', {
+      method: 'POST',
+      body: JSON.stringify({ id }),
+    }),
+  getAdminSecurityLogs: () => request<SecurityAuditLog[]>('/api/admin/security/logs'),
+};
