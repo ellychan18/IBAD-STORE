@@ -16,6 +16,7 @@ import { OrderTracker } from './components/OrderTracker.js';
 import { UserDashboard } from './components/UserDashboard.js';
 import { InvoiceModal } from './components/InvoiceModal.js';
 import { AdminPanel } from './components/AdminPanel.js';
+import { EditProfileModal } from './components/EditProfileModal.js';
 
 export default function App() {
   const [activeTab, setActiveTab] = useState<'catalog' | 'postpaid' | 'tracker' | 'dashboard' | 'admin'>('catalog');
@@ -27,6 +28,7 @@ export default function App() {
   const [authModalOpen, setAuthModalOpen] = useState(false);
   const [authMode, setAuthMode] = useState<'login' | 'register'>('login');
   const [depositModalOpen, setDepositModalOpen] = useState(false);
+  const [editProfileModalOpen, setEditProfileModalOpen] = useState(false);
   const [selectedProductForOrder, setSelectedProductForOrder] = useState<ProductItem | null>(null);
   const [activeInvoice, setActiveInvoice] = useState<TransactionRecord | null>(null);
 
@@ -97,12 +99,12 @@ export default function App() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans selection:bg-cyan-500 selection:text-slate-950">
+    <div className="min-h-screen bg-slate-50 text-slate-800 flex flex-col font-sans selection:bg-indigo-600 selection:text-white">
       {/* Toast Notification */}
       {toastMessage && (
-        <div className="fixed bottom-6 right-6 z-50 bg-cyan-950 border border-cyan-500/80 text-cyan-300 px-4 py-3 rounded-2xl shadow-2xl flex items-center gap-2.5 animate-in slide-in-from-bottom-5">
-          <CheckCircle2 className="w-5 h-5 text-cyan-400 shrink-0" />
-          <span className="text-xs font-semibold">{toastMessage}</span>
+        <div className="fixed bottom-6 right-6 z-50 bg-slate-900 border border-slate-700 text-white px-4 py-3 rounded-2xl shadow-2xl flex items-center gap-2.5 animate-in slide-in-from-bottom-5">
+          <CheckCircle2 className="w-5 h-5 text-emerald-400 shrink-0" />
+          <span className="text-xs font-bold">{toastMessage}</span>
         </div>
       )}
 
@@ -113,6 +115,7 @@ export default function App() {
         setActiveTab={setActiveTab}
         onOpenAuth={handleOpenAuth}
         onOpenDeposit={() => setDepositModalOpen(true)}
+        onOpenEditProfile={() => setEditProfileModalOpen(true)}
         onLogout={handleLogout}
       />
 
@@ -220,6 +223,18 @@ export default function App() {
         transaction={activeInvoice}
         onClose={() => setActiveInvoice(null)}
       />
+
+      {user && (
+        <EditProfileModal
+          user={user}
+          isOpen={editProfileModalOpen}
+          onClose={() => setEditProfileModalOpen(false)}
+          onSuccess={(updated) => {
+            setUser(updated);
+            showToast('Foto profil dan data akun berhasil diperbarui!');
+          }}
+        />
+      )}
     </div>
   );
 }

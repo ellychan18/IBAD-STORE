@@ -7,6 +7,7 @@ export interface User {
   balance: number;
   role: 'user' | 'admin';
   hasPin: boolean;
+  avatar?: string;
   createdAt: string;
 }
 
@@ -34,6 +35,8 @@ export interface PostpaidInquiryResult {
   harga: number;
   biaya_admin: number;
   total_tagihan: number;
+  periode?: string;
+  tarif_daya?: string;
   detail?: {
     tarif?: string;
     daya?: number;
@@ -58,6 +61,7 @@ export interface DepositMethod {
   fee_persen: number;
   status: 'aktif' | 'nonaktif';
   img_url?: string;
+  keterangan?: string;
 }
 
 export interface DepositOrder {

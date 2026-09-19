@@ -119,33 +119,39 @@ export function decryptData(cipherText: string): string | null {
 }
 
 /**
- * Comprehensive Injection Detection Patterns
+ * Comprehensive Injection Detection Patterns - tuned to avoid false positives on legitimate business data
  */
 const SQL_PATTERNS = [
-  /(\b(SELECT|UNION|INSERT|UPDATE|DELETE|DROP|ALTER|CREATE|TRUNCATE|EXEC|EXECUTE|XP_|BENCHMARK|SLEEP)\b)/i,
-  /(--|#|\/\*|\*\/)/,
-  /('|\b)(OR|AND)\b.+[=><]/i,
-  /;\s*(SELECT|DROP|INSERT|UPDATE|DELETE)/i,
-  /\b0x[0-9a-fA-F]+\b/,
+  /(\bUNION\s+(ALL\s+)?SELECT\b)/i,
+  /(\b(DROP\s+TABLE|ALTER\s+TABLE|TRUNCATE\s+TABLE)\b)/i,
+  /(\bINSERT\s+INTO\b.+VALUES\b)/i,
+  /(\bSELECT\b.+FROM\b.+WHERE\b)/i,
+  /(\bUPDATE\b.+SET\b.+WHERE\b)/i,
+  /(\bDELETE\s+FROM\b.+WHERE\b)/i,
+  /(--\s*$|;\s*DROP\s+TABLE|;\s*DELETE\s+FROM)/i,
+  /('|\b)(OR|AND)\s+['"]?1['"]?\s*=\s*['"]?1/i,
+  /\b0x[0-9a-fA-F]{8,}\b/,
 ];
 
 const XSS_PATTERNS = [
   /<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi,
-  /javascript\s*:/i,
-  /on(load|error|click|mouse|hover|change|submit|focus|blur)\s*=/i,
-  /<iframe|<object|<embed|<svg.*onload/i,
+  /javascript\s*:\s*(alert|document|window|eval|prompt)/i,
+  /on(load|error|click|mouse|hover|change|submit|focus|blur)\s*=\s*["'][^"']+["']/i,
+  /<iframe\b|<object\b|<embed\b|<svg\b[^>]*onload\s*=/i,
   /data:text\/html/i,
 ];
 
 const CMD_INJECTION_PATTERNS = [
-  /(\||;|&|`|\$\(.*\)|\$\{.*\})/i,
-  /\b(cat|ls|whoami|id|bash|sh|cmd|powershell|curl|wget|nc|netcat|nmap)\s+/i,
+  /`[^`]+`/,
+  /\$\([a-zA-Z0-9_\-\s]+\)/,
+  /\$\{[a-zA-Z0-9_\-\s]+\}/,
+  /(?:;|\|\||&&)\s*(?:rm\s+-rf|whoami|cat\s+\/etc\/passwd|bash\s+-i|nc\s+-e|powershell\s+-enc)/i,
 ];
 
 const PATH_TRAVERSAL_PATTERNS = [
-  /\.\.[\/\\]/,
+  /\.\.[\/\\]\.\.[\/\\]/,
   /\/etc\/passwd/i,
-  /c:\\windows/i,
+  /c:\\windows\\system32/i,
   /\x00/,
 ];
 
@@ -154,10 +160,25 @@ const PROTOTYPE_POLLUTION_KEYS = ['__proto__', 'constructor', 'prototype'];
 /**
  * Scan arbitrary value for malicious injection signatures
  */
-export function detectInjection(value: unknown): { isThreat: boolean; type?: ThreatLog['threatType']; pattern?: string } {
+export function detectInjection(value: unknown, keyName?: string): { isThreat: boolean; type?: ThreatLog['threatType']; pattern?: string } {
   if (value === null || value === undefined) return { isThreat: false };
 
+  // Skip deep payload scanning for base64 image avatars or URLs
+  if (keyName && ['avatar', 'img_url', 'image', 'banner', 'qr_string'].includes(keyName)) {
+    if (typeof value === 'string') {
+      // Basic sanity check: ensure it's either an image data URL or http URL
+      if (value.startsWith('data:image/') || value.startsWith('http://') || value.startsWith('https://')) {
+        return { isThreat: false };
+      }
+    }
+  }
+
   if (typeof value === 'string') {
+    // If string is a valid base64 image data uri, allow it
+    if (value.startsWith('data:image/')) {
+      return { isThreat: false };
+    }
+
     // Check SQL Injection
     for (const pat of SQL_PATTERNS) {
       if (pat.test(value)) return { isThreat: true, type: 'SQL_INJECTION', pattern: pat.source };
@@ -179,7 +200,7 @@ export function detectInjection(value: unknown): { isThreat: boolean; type?: Thr
       if (PROTOTYPE_POLLUTION_KEYS.includes(key)) {
         return { isThreat: true, type: 'PROTOTYPE_POLLUTION', pattern: key };
       }
-      const nested = detectInjection((value as any)[key]);
+      const nested = detectInjection((value as any)[key], key);
       if (nested.isThreat) return nested;
     }
   }

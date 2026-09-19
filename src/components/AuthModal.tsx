@@ -11,6 +11,7 @@ import {
   Eye,
   EyeOff,
   Sparkles,
+  Gamepad2,
 } from 'lucide-react';
 import { api, authStorage } from '../services/api.js';
 import type { User } from '../types.js';
@@ -87,147 +88,146 @@ export const AuthModal: React.FC<AuthModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200">
-      <div className="relative w-full max-w-md bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl p-6 sm:p-8 overflow-hidden">
-        {/* Subtle Glow Accent */}
-        <div className="absolute -top-24 -right-24 w-48 h-48 bg-cyan-500/10 rounded-full blur-3xl pointer-events-none"></div>
-
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in fade-in duration-200">
+      <div className="relative w-full max-w-md bg-white border border-slate-200 rounded-3xl shadow-2xl p-6 sm:p-8 overflow-hidden">
         {/* Close Button */}
         <button
           id="btn-close-auth"
           onClick={onClose}
-          className="absolute top-4 right-4 p-2 text-slate-400 hover:text-white rounded-full hover:bg-slate-800/80 transition-colors cursor-pointer"
+          className="absolute top-4 right-4 p-2 text-slate-400 hover:text-slate-700 rounded-full hover:bg-slate-100 transition-colors cursor-pointer"
         >
           <X className="w-5 h-5" />
         </button>
 
-        {/* Header Icon & Title */}
-        <div className="text-center mb-6">
-          <div className="inline-flex items-center justify-center w-12 h-12 rounded-2xl bg-gradient-to-tr from-cyan-600 to-emerald-500 p-0.5 shadow-lg shadow-cyan-500/20 mb-3">
-            <div className="w-full h-full bg-slate-950 rounded-[14px] flex items-center justify-center">
-              <ShieldCheck className="w-6 h-6 text-cyan-400" />
-            </div>
+        {/* Brand Header */}
+        <div className="flex items-center gap-3 mb-6">
+          <div className="w-11 h-11 rounded-2xl bg-gradient-to-tr from-cyan-500 to-indigo-600 flex items-center justify-center text-white shadow-md">
+            <Gamepad2 className="w-6 h-6" />
           </div>
-          <h2 className="text-xl font-bold text-white tracking-tight">
-            {mode === 'login' ? 'Masuk ke Ibad Store' : 'Daftar Akun Baru'}
-          </h2>
-          <p className="text-xs text-slate-400 mt-1">
-            {mode === 'login'
-              ? 'Akses saldo, riwayat transaksi, dan layanan khusus member.'
-              : 'Daftar sekarang dan nikmati kecepatan transaksi dengan enkripsi penuh.'}
-          </p>
+          <div>
+            <h3 className="text-lg font-black text-slate-900 tracking-tight">IBAD STORE</h3>
+            <p className="text-[11px] text-slate-500 font-medium">
+              {mode === 'login' ? 'Masuk ke Portal Member Resmi' : 'Daftar Akun Member Baru'}
+            </p>
+          </div>
         </div>
 
-        {/* Tabs */}
-        <div className="flex bg-slate-950 p-1 rounded-xl mb-6 border border-slate-800">
+        {/* Tab Switcher */}
+        <div className="flex bg-slate-100 p-1 rounded-2xl mb-6">
           <button
-            id="tab-login-mode"
             type="button"
+            id="tab-btn-login"
             onClick={() => {
               setMode('login');
               setError(null);
             }}
-            className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all cursor-pointer ${
+            className={`flex-1 py-2 text-xs font-black rounded-xl transition-all cursor-pointer ${
               mode === 'login'
-                ? 'bg-gradient-to-r from-cyan-500 to-cyan-600 text-slate-950 shadow-md'
-                : 'text-slate-400 hover:text-white'
+                ? 'bg-white text-slate-900 shadow-sm'
+                : 'text-slate-500 hover:text-slate-900'
             }`}
           >
-            Masuk
+            Masuk Akun
           </button>
           <button
-            id="tab-register-mode"
             type="button"
+            id="tab-btn-register"
             onClick={() => {
               setMode('register');
               setError(null);
             }}
-            className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all cursor-pointer ${
+            className={`flex-1 py-2 text-xs font-black rounded-xl transition-all cursor-pointer ${
               mode === 'register'
-                ? 'bg-gradient-to-r from-cyan-500 to-cyan-600 text-slate-950 shadow-md'
-                : 'text-slate-400 hover:text-white'
+                ? 'bg-white text-slate-900 shadow-sm'
+                : 'text-slate-500 hover:text-slate-900'
             }`}
           >
-            Daftar Akun
+            Daftar Member
           </button>
         </div>
 
-        {/* Error Notification */}
+        {/* Demo Fast Login Pills */}
+        <div className="mb-5 p-3 rounded-2xl bg-indigo-50/70 border border-indigo-100 flex items-center justify-between">
+          <div className="flex items-center gap-1.5 text-[11px] text-indigo-900 font-bold">
+            <Sparkles className="w-3.5 h-3.5 text-indigo-600" />
+            <span>Akses Cepat Demo:</span>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <button
+              type="button"
+              id="btn-demo-admin"
+              onClick={() => handleQuickDemo('admin')}
+              className="px-2.5 py-1 bg-white hover:bg-slate-50 text-indigo-700 rounded-lg text-[10px] font-black border border-indigo-200 cursor-pointer shadow-sm"
+            >
+              Admin Demo
+            </button>
+            <button
+              type="button"
+              id="btn-demo-member"
+              onClick={() => handleQuickDemo('member')}
+              className="px-2.5 py-1 bg-white hover:bg-slate-50 text-indigo-700 rounded-lg text-[10px] font-black border border-indigo-200 cursor-pointer shadow-sm"
+            >
+              Member Demo
+            </button>
+          </div>
+        </div>
+
+        {/* Error Alert */}
         {error && (
-          <div className="mb-4 p-3 rounded-xl bg-rose-950/50 border border-rose-800/80 text-rose-300 text-xs flex items-center gap-2">
-            <AlertCircle className="w-4 h-4 shrink-0 text-rose-400" />
+          <div className="mb-4 p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-xs flex items-center gap-2 font-medium">
+            <AlertCircle className="w-4 h-4 shrink-0 text-rose-600" />
             <span>{error}</span>
           </div>
         )}
 
-        {/* Form */}
-        <form onSubmit={handleSubmit} className="space-y-4">
-          {mode === 'register' && (
-            <div>
-              <label className="block text-xs font-medium text-slate-300 mb-1">Nama Lengkap</label>
-              <div className="relative">
-                <UserIcon className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                <input
-                  id="reg-input-name"
-                  type="text"
-                  required
-                  placeholder="Contoh: Faisal Kurniawan"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  className="w-full pl-10 pr-4 py-2.5 bg-slate-950 border border-slate-800 focus:border-cyan-500 rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-cyan-500"
-                />
-              </div>
-            </div>
-          )}
-
-          <div>
-            <label className="block text-xs font-medium text-slate-300 mb-1">
-              {mode === 'login' ? 'Username atau Email' : 'Username'}
-            </label>
-            <div className="relative">
-              <UserIcon className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-              <input
-                id="auth-input-username"
-                type="text"
-                required
-                placeholder={mode === 'login' ? 'Masukkan username / email' : 'Username unik (4-20 huruf)'}
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
-                className="w-full pl-10 pr-4 py-2.5 bg-slate-950 border border-slate-800 focus:border-cyan-500 rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-cyan-500 font-mono"
-              />
-            </div>
-          </div>
-
+        {/* Form Fields */}
+        <form onSubmit={handleSubmit} className="space-y-4 text-xs">
           {mode === 'register' && (
             <>
               <div>
-                <label className="block text-xs font-medium text-slate-300 mb-1">Alamat Email</label>
+                <label className="block text-slate-700 font-bold mb-1">Nama Lengkap</label>
                 <div className="relative">
-                  <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                  <UserIcon className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
                   <input
-                    id="reg-input-email"
-                    type="email"
+                    id="input-auth-name"
+                    type="text"
                     required
-                    placeholder="nama@email.com"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    className="w-full pl-10 pr-4 py-2.5 bg-slate-950 border border-slate-800 focus:border-cyan-500 rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-cyan-500"
+                    placeholder="Nama Lengkap Anda"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-300 focus:border-indigo-500 focus:bg-white rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-indigo-500 font-medium"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="block text-xs font-medium text-slate-300 mb-1">Nomor WhatsApp / HP</label>
+                <label className="block text-slate-700 font-bold mb-1">Email</label>
+                <div className="relative">
+                  <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                  <input
+                    id="input-auth-email"
+                    type="email"
+                    required
+                    placeholder="email@domain.com"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-300 focus:border-indigo-500 focus:bg-white rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-indigo-500 font-medium"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-slate-700 font-bold mb-1">No. WhatsApp</label>
                 <div className="relative">
                   <Phone className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
                   <input
-                    id="reg-input-phone"
+                    id="input-auth-phone"
                     type="tel"
                     required
                     placeholder="081234567890"
                     value={phone}
                     onChange={(e) => setPhone(e.target.value)}
-                    className="w-full pl-10 pr-4 py-2.5 bg-slate-950 border border-slate-800 focus:border-cyan-500 rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-cyan-500 font-mono"
+                    className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-300 focus:border-indigo-500 focus:bg-white rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-indigo-500 font-medium"
                   />
                 </div>
               </div>
@@ -235,55 +235,67 @@ export const AuthModal: React.FC<AuthModalProps> = ({
           )}
 
           <div>
-            <label className="block text-xs font-medium text-slate-300 mb-1">Password</label>
+            <label className="block text-slate-700 font-bold mb-1">
+              {mode === 'login' ? 'Username atau Email' : 'Pilih Username Unik'}
+            </label>
             <div className="relative">
-              <KeyRound className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+              <UserIcon className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
               <input
-                id="auth-input-password"
+                id="input-auth-username"
+                type="text"
+                required
+                placeholder="Username akun"
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+                className="w-full pl-10 pr-4 py-2.5 bg-slate-50 border border-slate-300 focus:border-indigo-500 focus:bg-white rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-indigo-500 font-medium"
+              />
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-slate-700 font-bold mb-1">Kata Sandi (Password)</label>
+            <div className="relative">
+              <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+              <input
+                id="input-auth-password"
                 type={showPassword ? 'text' : 'password'}
                 required
-                placeholder="Minimal 6 karakter"
+                placeholder="••••••••"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="w-full pl-10 pr-10 py-2.5 bg-slate-950 border border-slate-800 focus:border-cyan-500 rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-cyan-500"
+                className="w-full pl-10 pr-10 py-2.5 bg-slate-50 border border-slate-300 focus:border-indigo-500 focus:bg-white rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-indigo-500 font-medium"
               />
               <button
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white cursor-pointer"
+                className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700 cursor-pointer"
               >
                 {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
               </button>
             </div>
           </div>
 
-          {/* Submit Button */}
-          <button
-            id="auth-btn-submit"
-            type="submit"
-            disabled={loading}
-            className="w-full py-3 bg-gradient-to-r from-cyan-500 to-cyan-600 hover:from-cyan-400 hover:to-cyan-500 text-slate-950 font-bold rounded-xl text-xs shadow-lg shadow-cyan-500/20 transition-all disabled:opacity-50 cursor-pointer"
-          >
-            {loading ? (
-              <span className="flex items-center justify-center gap-2">
-                <span className="w-3.5 h-3.5 border-2 border-slate-950 border-t-transparent rounded-full animate-spin"></span>
-                Memproses Keamanan...
-              </span>
-            ) : mode === 'login' ? (
-              'Masuk Sekarang'
-            ) : (
-              'Daftar Akun Sekarang'
-            )}
-          </button>
+          <div className="pt-3">
+            <button
+              id="btn-auth-submit"
+              type="submit"
+              disabled={loading}
+              className="w-full py-3 bg-gradient-to-r from-cyan-600 via-indigo-600 to-violet-600 hover:from-cyan-500 hover:to-violet-500 text-white font-black rounded-2xl text-xs shadow-lg shadow-indigo-500/20 transition-all disabled:opacity-50 cursor-pointer flex items-center justify-center gap-2"
+            >
+              {loading ? (
+                <>
+                  <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
+                  <span>Memproses...</span>
+                </>
+              ) : (
+                <>
+                  <ShieldCheck className="w-4 h-4" />
+                  <span>{mode === 'login' ? 'Masuk ke Akun' : 'Daftar Sekarang'}</span>
+                </>
+              )}
+            </button>
+          </div>
         </form>
-
-        {/* Clean Trust Badge */}
-        <div className="mt-5 pt-4 border-t border-slate-800/80 text-center">
-          <p className="text-[11px] text-slate-400 flex items-center justify-center gap-1.5">
-            <Lock className="w-3.5 h-3.5 text-cyan-400" />
-            <span>Koneksi &amp; Data Anda Terlindungi Aman</span>
-          </p>
-        </div>
       </div>
     </div>
   );

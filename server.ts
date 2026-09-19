@@ -51,6 +51,7 @@ import {
   getSecurityLogs,
   getAllUsersAdmin,
   getAllTransactionsAdmin,
+  clearAllTransactionsAdmin,
   getAllDepositsAdmin,
   adminUpdateUserBalance,
   adminSetUserRole,
@@ -58,6 +59,7 @@ import {
   saveTransferRecord,
   getTransferRecordByIdOrRef,
   getAllTransferRecords,
+  updateUserProfile,
 } from './server/db.js';
 import type { TransactionRecord, DepositOrder, ProductItem } from './src/types.js';
 
@@ -66,9 +68,9 @@ dotenv.config();
 const app = express();
 const PORT = 3000;
 
-// Body parsing with safe size limits
-app.use(express.json({ limit: '1mb' }));
-app.use(express.urlencoded({ extended: true, limit: '1mb' }));
+// Body parsing with safe size limits for profile images
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
 // Apply WAF and anti-injection shield on all routes
 app.use(wafMiddleware);
@@ -278,6 +280,57 @@ app.get('/api/auth/me', authMiddleware, async (req, res) => {
     return res.json({ status: true, data: sanitized });
   } catch (err) {
     return maskErrorResponse(res, err, 'Gagal memuat profil pengguna.');
+  }
+});
+
+// Update User Profile (Name, Phone, and Avatar Photo)
+app.post('/api/auth/profile', authMiddleware, async (req, res) => {
+  try {
+    const user = (req as any).user;
+    const { name, phone, avatar } = req.body;
+
+    const updated = await updateUserProfile(user.id, {
+      name: typeof name === 'string' ? name : undefined,
+      phone: typeof phone === 'string' ? phone : undefined,
+      avatar: typeof avatar === 'string' ? avatar : undefined,
+    });
+
+    if (!updated) {
+      return res.status(404).json({ status: false, message: 'Pengguna tidak ditemukan.' });
+    }
+
+    return res.json({
+      status: true,
+      message: 'Profil dan foto profil berhasil diperbarui!',
+      data: updated,
+    });
+  } catch (err) {
+    return maskErrorResponse(res, err, 'Gagal memperbarui profil pengguna.');
+  }
+});
+
+app.put('/api/auth/profile', authMiddleware, async (req, res) => {
+  try {
+    const user = (req as any).user;
+    const { name, phone, avatar } = req.body;
+
+    const updated = await updateUserProfile(user.id, {
+      name: typeof name === 'string' ? name : undefined,
+      phone: typeof phone === 'string' ? phone : undefined,
+      avatar: typeof avatar === 'string' ? avatar : undefined,
+    });
+
+    if (!updated) {
+      return res.status(404).json({ status: false, message: 'Pengguna tidak ditemukan.' });
+    }
+
+    return res.json({
+      status: true,
+      message: 'Profil dan foto profil berhasil diperbarui!',
+      data: updated,
+    });
+  } catch (err) {
+    return maskErrorResponse(res, err, 'Gagal memperbarui profil pengguna.');
   }
 });
 
@@ -875,6 +928,16 @@ app.get('/api/admin/transactions', adminMiddleware, async (req, res) => {
   }
 });
 
+// Clear/Purge All Transactions (Admin Only)
+app.post('/api/admin/transactions/clear', adminMiddleware, async (req, res) => {
+  try {
+    await clearAllTransactionsAdmin();
+    return res.json({ status: true, message: 'Seluruh data riwayat transaksi berhasil dibersihkan.' });
+  } catch (err) {
+    return maskErrorResponse(res, err, 'Gagal membersihkan data transaksi.');
+  }
+});
+
 // Update Transaction Status by Admin (Manual Intervention / Sync)
 app.post('/api/admin/transaction/update-status', adminMiddleware, async (req, res) => {
   try {
@@ -964,6 +1027,26 @@ app.post('/api/admin/deposit/action', adminMiddleware, async (req, res) => {
     });
   } catch (err) {
     return maskErrorResponse(res, err, 'Gagal memproses aksi deposit.');
+  }
+});
+
+// Atlantic Gateway Balance Endpoint
+app.get('/api/admin/gateway-balance', adminMiddleware, async (req, res) => {
+  try {
+    const t0 = Date.now();
+    const profile = await getAtlanticProfile();
+    const latency = Date.now() - t0;
+    const data = profile?.data || profile;
+
+    return res.json({
+      status: true,
+      balance: data?.balance !== undefined ? data.balance : 0,
+      statusGateway: data?.status === 'active' || data?.status === 'aktif' ? 'ACTIVE' : (data?.status || 'ONLINE'),
+      latencyMs: latency,
+      data,
+    });
+  } catch (err) {
+    return maskErrorResponse(res, err, 'Gagal mengambil saldo gateway.');
   }
 });
 

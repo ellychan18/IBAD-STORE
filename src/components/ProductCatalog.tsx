@@ -33,9 +33,9 @@ const POPULAR_GAMES_SHOWCASE = [
     providerKey: 'Mobile Legends',
     badge: '🔥 TERLARIS',
     image: 'https://images.unsplash.com/photo-1542751371-adc38448a05e?w=500&auto=format&fit=crop&q=80',
-    color: 'from-blue-600/30 to-indigo-950',
-    accentBorder: 'border-blue-500/40',
-    desc: 'Diamond & Weekly Pass Instan',
+    color: 'from-blue-600 via-indigo-600 to-cyan-500',
+    accentBorder: 'border-blue-200',
+    desc: 'Weekly Pass & Diamond Kilat',
   },
   {
     name: 'Free Fire',
@@ -43,9 +43,9 @@ const POPULAR_GAMES_SHOWCASE = [
     providerKey: 'Free Fire',
     badge: '⚡ FLASH SALE',
     image: 'https://images.unsplash.com/photo-1511512578047-dfb367046420?w=500&auto=format&fit=crop&q=80',
-    color: 'from-rose-600/30 to-slate-950',
-    accentBorder: 'border-rose-500/40',
-    desc: 'Booyah Pass & Diamond',
+    color: 'from-rose-600 via-orange-600 to-amber-500',
+    accentBorder: 'border-rose-200',
+    desc: 'Booyah Pass & Diamond Resmi',
   },
   {
     name: 'Token PLN',
@@ -53,28 +53,28 @@ const POPULAR_GAMES_SHOWCASE = [
     providerKey: 'PLN',
     badge: '💡 24 JAM NONSTOP',
     image: 'https://images.unsplash.com/photo-1473341304170-971dccb5ac1e?w=500&auto=format&fit=crop&q=80',
-    color: 'from-amber-600/30 to-slate-950',
-    accentBorder: 'border-amber-500/40',
+    color: 'from-emerald-600 via-teal-600 to-cyan-600',
+    accentBorder: 'border-emerald-200',
     desc: 'Token Prabayar Langsung Keluar',
   },
   {
     name: 'Pulsa & Data',
     category: 'Pulsa',
     providerKey: 'Telkomsel',
-    badge: '📶 SERBA MURAH',
+    badge: '📶 SERBA HEMAT',
     image: 'https://images.unsplash.com/photo-1512941937669-90a1b58e7e9c?w=500&auto=format&fit=crop&q=80',
-    color: 'from-cyan-600/30 to-slate-950',
-    accentBorder: 'border-cyan-500/40',
-    desc: 'Telkomsel, Indosat, XL, Axis, Tri',
+    color: 'from-indigo-600 via-violet-600 to-purple-500',
+    accentBorder: 'border-indigo-200',
+    desc: 'Telkomsel, Indosat, XL, Tri, Axis',
   },
   {
     name: 'Dompet Digital',
     category: 'E-Money',
     providerKey: 'DANA',
-    badge: '💳 INSTAN OTOMATIS',
+    badge: '💳 INSTAN 1 DETIK',
     image: 'https://images.unsplash.com/photo-1559526324-4b87b5e36e44?w=500&auto=format&fit=crop&q=80',
-    color: 'from-emerald-600/30 to-slate-950',
-    accentBorder: 'border-emerald-500/40',
+    color: 'from-cyan-600 via-blue-600 to-indigo-600',
+    accentBorder: 'border-cyan-200',
     desc: 'DANA, GoPay, OVO, ShopeePay',
   },
 ];
@@ -225,16 +225,16 @@ export const ProductCatalog: React.FC<ProductCatalogProps> = ({
       {selectedCategory === 'All' && selectedBrand === 'All' && !searchQuery && (
         <div className="space-y-3">
           <div className="flex items-center justify-between">
-            <h3 className="text-sm sm:text-base font-extrabold text-white flex items-center gap-2">
-              <Sparkles className="w-4 h-4 text-cyan-400" />
+            <h3 className="text-sm sm:text-base font-black text-slate-900 flex items-center gap-2">
+              <Sparkles className="w-4 h-4 text-indigo-600" />
               <span>Layanan Populer &amp; Paling Banyak Dipesan</span>
             </h3>
-            <span className="text-xs text-slate-400 font-medium hidden sm:inline">
-              Pilihan terfavorit member Ibad Store
+            <span className="text-xs text-slate-500 font-semibold hidden sm:inline">
+              Pilihan terfavorit gamer &amp; member Ibad Store
             </span>
           </div>
 
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3.5">
             {POPULAR_GAMES_SHOWCASE.map((showcase) => (
               <div
                 key={showcase.name}
@@ -244,34 +244,34 @@ export const ProductCatalog: React.FC<ProductCatalogProps> = ({
                   setSelectedBrand('All');
                   setSearchQuery(showcase.providerKey);
                 }}
-                className={`group relative overflow-hidden rounded-2xl border ${showcase.accentBorder} bg-gradient-to-b ${showcase.color} p-4 cursor-pointer transition-all duration-300 hover:-translate-y-1 hover:shadow-xl hover:shadow-cyan-950/40 flex flex-col justify-between min-h-[160px]`}
+                className={`group relative overflow-hidden rounded-2xl border ${showcase.accentBorder} bg-gradient-to-br ${showcase.color} p-4 cursor-pointer transition-all duration-300 hover:-translate-y-1 hover:shadow-xl hover:shadow-indigo-500/20 flex flex-col justify-between min-h-[160px] text-white`}
               >
                 {/* Background Image Thumbnail */}
-                <div className="absolute inset-0 opacity-20 group-hover:opacity-30 transition-opacity pointer-events-none">
+                <div className="absolute inset-0 opacity-25 group-hover:opacity-35 transition-opacity pointer-events-none mix-blend-overlay">
                   <img
                     src={showcase.image}
                     alt={showcase.name}
                     className="w-full h-full object-cover object-center group-hover:scale-110 transition-transform duration-700"
                   />
-                  <div className="absolute inset-0 bg-slate-950/70"></div>
+                  <div className="absolute inset-0 bg-slate-950/40"></div>
                 </div>
 
                 {/* Top Badge */}
                 <div className="relative z-10">
-                  <span className="text-[9px] font-extrabold px-2 py-0.5 rounded-full bg-slate-950/80 border border-slate-700 text-cyan-300 tracking-wider">
+                  <span className="text-[9px] font-black px-2 py-0.5 rounded-full bg-white/90 text-slate-900 shadow-sm tracking-wider">
                     {showcase.badge}
                   </span>
                 </div>
 
                 {/* Info Text */}
                 <div className="relative z-10 space-y-1 pt-4">
-                  <h4 className="font-extrabold text-white text-xs sm:text-sm group-hover:text-cyan-300 transition-colors line-clamp-1">
+                  <h4 className="font-black text-white text-xs sm:text-sm group-hover:text-amber-200 transition-colors line-clamp-1 drop-shadow-sm">
                     {showcase.name}
                   </h4>
-                  <p className="text-[10px] text-slate-300 line-clamp-1">
+                  <p className="text-[10px] text-white/90 line-clamp-1 font-medium">
                     {showcase.desc}
                   </p>
-                  <div className="text-[10px] text-cyan-400 font-semibold flex items-center gap-1 pt-1">
+                  <div className="text-[10px] text-white font-bold flex items-center gap-1 pt-1">
                     <span>Lihat Pilihan</span>
                     <ArrowRight className="w-3 h-3 group-hover:translate-x-1 transition-transform" />
                   </div>
@@ -299,10 +299,10 @@ export const ProductCatalog: React.FC<ProductCatalogProps> = ({
                     setSelectedBrand('All');
                     setSearchQuery('');
                   }}
-                  className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold whitespace-nowrap transition-all cursor-pointer ${
+                  className={`flex items-center gap-2 px-4 py-2.5 rounded-2xl text-xs font-black whitespace-nowrap transition-all cursor-pointer ${
                     active
-                      ? 'bg-cyan-500 text-slate-950 shadow-md shadow-cyan-500/20'
-                      : 'bg-slate-900/90 text-slate-300 hover:text-white hover:bg-slate-800 border border-slate-800'
+                      ? 'bg-gradient-to-r from-cyan-600 via-indigo-600 to-violet-600 text-white shadow-md shadow-indigo-500/25'
+                      : 'bg-white text-slate-700 hover:text-slate-900 hover:bg-slate-50 border border-slate-200 shadow-sm'
                   }`}
                 >
                   <Icon className="w-4 h-4" />
@@ -322,7 +322,7 @@ export const ProductCatalog: React.FC<ProductCatalogProps> = ({
                 placeholder="Cari game, diamond, pulsa..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-10 pr-4 py-2 bg-slate-900 border border-slate-800 focus:border-cyan-500 rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:ring-1 focus:ring-cyan-500"
+                className="w-full pl-10 pr-4 py-2.5 bg-white border border-slate-200 focus:border-indigo-500 rounded-2xl text-xs text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-indigo-500 shadow-sm font-semibold"
               />
             </div>
 
@@ -331,27 +331,27 @@ export const ProductCatalog: React.FC<ProductCatalogProps> = ({
               onClick={onRefreshProducts}
               disabled={loading}
               title="Perbarui harga langsung dari Atlantic H2H Gateway"
-              className="p-2.5 bg-slate-900 border border-slate-800 hover:border-cyan-500/50 text-slate-300 hover:text-cyan-400 rounded-xl text-xs transition-colors cursor-pointer flex items-center gap-1.5"
+              className="p-2.5 bg-white border border-slate-200 hover:border-indigo-400 text-slate-700 hover:text-indigo-600 rounded-2xl text-xs transition-colors cursor-pointer flex items-center gap-1.5 shadow-sm"
             >
-              <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin text-cyan-400' : ''}`} />
-              <span className="hidden md:inline text-[11px] font-semibold">Sync</span>
+              <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin text-indigo-600' : ''}`} />
+              <span className="hidden md:inline text-[11px] font-bold">Sync</span>
             </button>
           </div>
         </div>
 
-        {/* Sub-Brand Chips (if multiple brands exist for category) */}
+        {/* Sub-Brand Chips */}
         {availableBrands.length > 1 && (
           <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none">
-            <span className="text-[11px] font-bold text-slate-400 mr-1 flex items-center gap-1 shrink-0">
-              <Layers className="w-3.5 h-3.5 text-cyan-400" />
+            <span className="text-[11px] font-bold text-slate-500 mr-1 flex items-center gap-1 shrink-0">
+              <Layers className="w-3.5 h-3.5 text-indigo-600" />
               <span>Provider:</span>
             </span>
             <button
               onClick={() => setSelectedBrand('All')}
-              className={`px-3 py-1 rounded-lg text-[11px] font-bold transition-all cursor-pointer whitespace-nowrap ${
+              className={`px-3 py-1.5 rounded-xl text-[11px] font-bold transition-all cursor-pointer whitespace-nowrap ${
                 selectedBrand === 'All'
-                  ? 'bg-slate-700 text-cyan-300 border border-cyan-500/50'
-                  : 'bg-slate-900 text-slate-400 hover:text-slate-200 border border-slate-800'
+                  ? 'bg-indigo-600 text-white shadow-sm'
+                  : 'bg-white text-slate-600 hover:text-slate-900 border border-slate-200'
               }`}
             >
               Semua ({prabayarProducts.filter((p) => matchesCategory(p, selectedCategory)).length})
@@ -364,13 +364,13 @@ export const ProductCatalog: React.FC<ProductCatalogProps> = ({
                 <button
                   key={brand}
                   onClick={() => setSelectedBrand(brand)}
-                  className={`px-3 py-1 rounded-lg text-[11px] font-medium transition-all cursor-pointer whitespace-nowrap ${
+                  className={`px-3 py-1.5 rounded-xl text-[11px] font-bold transition-all cursor-pointer whitespace-nowrap ${
                     selectedBrand === brand
-                      ? 'bg-cyan-500 text-slate-950 font-bold shadow-sm shadow-cyan-500/30'
-                      : 'bg-slate-900 text-slate-400 hover:text-slate-200 border border-slate-800'
+                      ? 'bg-indigo-600 text-white shadow-sm'
+                      : 'bg-white text-slate-600 hover:text-slate-900 border border-slate-200'
                   }`}
                 >
-                  {brand} <span className="opacity-60 text-[10px]">({count})</span>
+                  {brand} <span className="opacity-70 text-[10px]">({count})</span>
                 </button>
               );
             })}
@@ -380,23 +380,23 @@ export const ProductCatalog: React.FC<ProductCatalogProps> = ({
 
       {/* Product Grid Grouped by Provider */}
       {loading && products.length === 0 ? (
-        <div className="text-center py-16 bg-slate-900/40 border border-slate-800/80 rounded-2xl p-8 space-y-4">
-          <RefreshCw className="w-10 h-10 text-cyan-400 animate-spin mx-auto" />
-          <p className="text-sm font-bold text-white">Memuat Katalog Layanan Atlantic H2H...</p>
-          <p className="text-xs text-slate-400">Menghubungkan ke gateway resmi dan menyinkronkan daftar harga realtime.</p>
+        <div className="text-center py-16 bg-white border border-slate-200 rounded-3xl p-8 space-y-4 shadow-sm">
+          <RefreshCw className="w-10 h-10 text-indigo-600 animate-spin mx-auto" />
+          <p className="text-sm font-bold text-slate-900">Memuat Katalog Layanan Atlantic H2H...</p>
+          <p className="text-xs text-slate-500">Menghubungkan ke gateway resmi dan menyinkronkan daftar harga realtime.</p>
         </div>
       ) : groupedByProvider.size === 0 ? (
-        <div className="text-center py-16 bg-slate-900/40 border border-slate-800/80 rounded-2xl p-8 space-y-3">
-          <Gamepad2 className="w-12 h-12 text-slate-600 mx-auto" />
-          <p className="text-sm font-semibold text-slate-300">Layanan Tidak Ditemukan</p>
-          <p className="text-xs text-slate-400 max-w-md mx-auto">
+        <div className="text-center py-16 bg-white border border-slate-200 rounded-3xl p-8 space-y-3 shadow-sm">
+          <Gamepad2 className="w-12 h-12 text-slate-400 mx-auto" />
+          <p className="text-sm font-bold text-slate-800">Layanan Tidak Ditemukan</p>
+          <p className="text-xs text-slate-500 max-w-md mx-auto">
             {searchQuery || selectedBrand !== 'All'
               ? 'Coba kata kunci pencarian lain atau klik "Semua" pada filter provider.'
               : 'Katalog layanan sedang diperbarui langsung dari Atlantic Gateway.'}
           </p>
           <button
             onClick={onRefreshProducts}
-            className="mt-2 inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-cyan-500 hover:bg-cyan-400 text-slate-950 text-xs font-bold transition-all shadow-md shadow-cyan-500/20"
+            className="mt-2 inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-gradient-to-r from-cyan-600 to-indigo-600 hover:from-cyan-500 hover:to-indigo-500 text-white text-xs font-bold transition-all shadow-md shadow-indigo-500/20 cursor-pointer"
           >
             <RefreshCw className="w-3.5 h-3.5" />
             <span>Sinkronkan Layanan Sekarang</span>
@@ -407,22 +407,22 @@ export const ProductCatalog: React.FC<ProductCatalogProps> = ({
           {Array.from(groupedByProvider.entries()).map(([provider, items]) => (
             <div key={provider} className="space-y-4">
               {/* Provider Header Banner */}
-              <div className="flex items-center justify-between border-b border-slate-800/80 pb-2">
+              <div className="flex items-center justify-between border-b border-slate-200 pb-2">
                 <div className="flex items-center gap-2.5">
-                  <div className="w-2.5 h-2.5 rounded-full bg-cyan-400 shadow-sm shadow-cyan-400/50"></div>
-                  <h3 className="text-base font-extrabold text-white tracking-tight">{provider}</h3>
-                  <span className="text-[11px] px-2 py-0.5 rounded-md bg-slate-900 text-slate-400 border border-slate-800 font-mono">
-                    {items.length} Paket Pilihan
+                  <div className="w-3 h-3 rounded-full bg-gradient-to-r from-cyan-500 to-indigo-600 shadow-sm"></div>
+                  <h3 className="text-base font-black text-slate-900 tracking-tight">{provider}</h3>
+                  <span className="text-[11px] px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-600 border border-slate-200 font-mono font-bold">
+                    {items.length} Pilihan
                   </span>
                 </div>
-                <div className="flex items-center gap-1 text-[11px] text-emerald-400">
+                <div className="flex items-center gap-1 text-[11px] text-emerald-600 font-bold">
                   <CheckCircle className="w-3.5 h-3.5" />
                   <span className="hidden sm:inline">Proses Instan &amp; Otomatis 24 Jam</span>
                 </div>
               </div>
 
               {/* Items Card Grid */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3.5">
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
                 {items.slice(0, 100).map((item) => {
                   const priceToDisplay = item.sellPrice || item.price;
                   const isAvailable = item.status === 'available';
@@ -432,50 +432,50 @@ export const ProductCatalog: React.FC<ProductCatalogProps> = ({
                       key={item.code}
                       id={`product-card-${item.code}`}
                       onClick={() => onSelectProduct(item)}
-                      className="group relative bg-slate-900/80 hover:bg-slate-850 border border-slate-800/90 hover:border-cyan-500/60 rounded-2xl p-4 transition-all duration-200 hover:-translate-y-1 hover:shadow-xl hover:shadow-cyan-950/40 cursor-pointer flex flex-col justify-between"
+                      className="group relative bg-white hover:bg-slate-50/80 border border-slate-200 hover:border-indigo-400 rounded-2xl p-4 transition-all duration-200 hover:-translate-y-1 hover:shadow-xl hover:shadow-indigo-500/10 cursor-pointer flex flex-col justify-between shadow-sm"
                     >
                       <div>
                         {/* Top tag & Code */}
                         <div className="flex items-center justify-between gap-2 mb-2">
-                          <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-cyan-950/80 border border-cyan-800/60 text-cyan-400 font-mono">
+                          <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-indigo-50 border border-indigo-100 text-indigo-700 font-mono">
                             {item.code}
                           </span>
                           {isAvailable ? (
-                            <span className="text-[10px] text-emerald-400 font-semibold flex items-center gap-1">
-                              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400"></span>
+                            <span className="text-[10px] text-emerald-600 font-extrabold flex items-center gap-1">
+                              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
                               Tersedia
                             </span>
                           ) : (
-                            <span className="text-[10px] text-rose-400 font-semibold flex items-center gap-1">
-                              <span className="w-1.5 h-1.5 rounded-full bg-rose-400"></span>
+                            <span className="text-[10px] text-rose-600 font-extrabold flex items-center gap-1">
+                              <span className="w-1.5 h-1.5 rounded-full bg-rose-500"></span>
                               Gangguan
                             </span>
                           )}
                         </div>
 
                         {/* Title */}
-                        <h4 className="text-xs font-bold text-white group-hover:text-cyan-300 transition-colors line-clamp-2 mb-1">
+                        <h4 className="text-xs font-black text-slate-900 group-hover:text-indigo-600 transition-colors line-clamp-2 mb-1">
                           {item.name}
                         </h4>
 
                         {/* Note / Subtext */}
                         {item.note && (
-                          <p className="text-[10px] text-slate-400 line-clamp-2 mb-2">
+                          <p className="text-[10px] text-slate-500 line-clamp-2 mb-2 font-medium">
                             {item.note}
                           </p>
                         )}
                       </div>
 
                       {/* Pricing and Action */}
-                      <div className="pt-3 border-t border-slate-800/60 flex items-center justify-between mt-2">
+                      <div className="pt-3 border-t border-slate-100 flex items-center justify-between mt-2">
                         <div>
-                          <p className="text-[10px] text-slate-400">Harga Member</p>
-                          <p className="text-sm font-extrabold text-cyan-400 tracking-tight">
+                          <p className="text-[10px] text-slate-400 font-semibold">Harga Member</p>
+                          <p className="text-sm font-black text-slate-900 tracking-tight font-mono">
                             Rp {Number(priceToDisplay || 0).toLocaleString('id-ID')}
                           </p>
                         </div>
 
-                        <span className="px-3 py-1.5 rounded-xl bg-cyan-500 group-hover:bg-cyan-400 text-slate-950 text-[11px] font-bold transition-all shadow-sm">
+                        <span className="px-3 py-1.5 rounded-xl bg-gradient-to-r from-cyan-600 to-indigo-600 group-hover:from-cyan-500 group-hover:to-indigo-500 text-white text-[11px] font-black transition-all shadow-sm">
                           Pesan
                         </span>
                       </div>

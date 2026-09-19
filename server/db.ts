@@ -2,7 +2,7 @@ import { MongoClient, Db, Collection } from 'mongodb';
 import crypto from 'node:crypto';
 import { hashPassword, verifyPassword } from './security.js';
 import type { User, ProductItem, TransactionRecord, DepositOrder, SecurityAuditLog } from '../src/types.js';
-import { getAllPriceLists } from './atlantic.js';
+import { getAllPriceLists, getAtlanticProfile } from './atlantic.js';
 
 import { INITIAL_PRODUCTS } from './initialProducts.js';
 
@@ -21,6 +21,7 @@ export interface StoredUser {
   pinSalt?: string;
   balance: number;
   role: 'user' | 'admin';
+  avatar?: string;
   status?: 'active' | 'suspended';
   createdAt: string;
   updatedAt?: string;
@@ -35,7 +36,7 @@ let client: MongoClient | null = null;
 let db: Db | null = null;
 let isConnected = false;
 
-// In-memory cache fallback pre-seeded with instant catalog
+// In-memory cache fallback pre-seeded with Master Admin ibad18
 const { hash: initialAdminHash, salt: initialAdminSalt } = hashPassword('Nuribad1805');
 const initialIbadAdmin: StoredUser = {
   id: 'usr_admin_ibad18',
@@ -62,18 +63,76 @@ let memSettings: Record<string, any> = {
   maintenanceMode: false,
 };
 
+// Real-time synchronization of Admin balance from Atlantic H2H getProfile
+export async function syncAdminBalanceFromH2H(): Promise<number | null> {
+  try {
+    const profile = await getAtlanticProfile();
+    const rawBalance =
+      profile?.data?.balance ??
+      profile?.data?.saldo ??
+      profile?.balance ??
+      profile?.saldo;
+
+    if (rawBalance !== undefined && rawBalance !== null) {
+      const h2hBalance = Number(rawBalance);
+      if (!isNaN(h2hBalance) && h2hBalance >= 0) {
+        initialIbadAdmin.balance = h2hBalance;
+        const memAdmin = memUsers.find((u) => u.username === 'ibad18');
+        if (memAdmin) memAdmin.balance = h2hBalance;
+
+        if (db) {
+          await db.collection<StoredUser>('users').updateOne(
+            { username: 'ibad18' },
+            { $set: { balance: h2hBalance, updatedAt: new Date().toISOString() } }
+          );
+        }
+        return h2hBalance;
+      }
+    }
+  } catch (err: any) {
+    console.warn('[Atlantic H2H Balance Sync Notice]', err?.message);
+  }
+  return null;
+}
+
 export async function connectMongo(): Promise<Db | null> {
   if (db && isConnected) return db;
   try {
     console.log('[MongoDB] Connecting to cluster...');
     client = new MongoClient(MONGODB_URI, {
-      connectTimeoutMS: 10000,
-      serverSelectionTimeoutMS: 10000,
+      connectTimeoutMS: 2500,
+      serverSelectionTimeoutMS: 2500,
     });
     await client.connect();
     db = client.db(DB_NAME);
     isConnected = true;
     console.log(`[MongoDB] Connected successfully to database: ${DB_NAME}`);
+
+    // Drop problematic/legacy unique indexes (e.g., refNo_1) from previous schema versions
+    try {
+      const collectionsToCheck = ['transactions', 'deposits', 'transfers', 'products'];
+      for (const colName of collectionsToCheck) {
+        try {
+          const colIndexes = await db.collection(colName).indexes();
+          for (const idx of colIndexes) {
+            if (
+              idx.name &&
+              (idx.name === 'refNo_1' ||
+                (idx.key && 'refNo' in idx.key) ||
+                (colName === 'transactions' && idx.unique && idx.name !== '_id_') ||
+                (colName === 'deposits' && idx.unique && idx.name !== '_id_'))
+            ) {
+              console.log(`[MongoDB] Dropping problematic index ${idx.name} on ${colName} collection...`);
+              await db.collection(colName).dropIndex(idx.name).catch(() => {});
+            }
+          }
+        } catch (colErr) {
+          // ignore if collection doesn't exist yet
+        }
+      }
+    } catch (cleanErr: any) {
+      console.warn('[MongoDB Index Cleanup Notice]', cleanErr.message);
+    }
 
     // Create indexes safely
     try {
@@ -93,7 +152,7 @@ export async function connectMongo(): Promise<Db | null> {
       // index exists, ignore
     }
 
-    // Seed default Admin accounts
+    // Seed default Admin accounts and purge unwanted records
     await seedDefaultAdmins();
 
     // Initial pure sync from Atlantic H2H if empty
@@ -111,16 +170,33 @@ export function isMongoConnected(): boolean {
   return isConnected;
 }
 
-// Seed single Admin account in MongoDB
+// Seed single Admin account in MongoDB and purge legacy/demo accounts
 async function seedDefaultAdmins() {
   if (!db) return;
   try {
     const usersCol = db.collection<StoredUser>('users');
 
-    // Purge any legacy demo or placeholder admin/member accounts
+    // Purge unwanted / legacy accounts (including ibadcode.id@gmail.com and demo users)
     await usersCol.deleteMany({
-      username: { $in: ['admin', 'ibadadmin', 'member', 'demo_member', 'demo_admin', 'superadmin'] },
+      $or: [
+        { email: 'ibadcode.id@gmail.com' },
+        { email: { $in: ['admin@admin.com', 'member@example.com', 'demo@example.com'] } },
+        { username: { $in: ['admin', 'ibadadmin', 'member', 'demo_member', 'demo_admin', 'superadmin', 'demo', 'ibad'] } },
+        { $and: [{ name: 'Ibad' }, { username: { $ne: 'ibad18' } }] },
+      ],
     });
+
+    // Clear any mock/sample transactions so order monitor starts completely clean
+    try {
+      await db.collection('transactions').deleteMany({
+        $or: [
+          { reff_id: { $regex: /sample|dummy|test|demo/i } },
+          { id: { $regex: /sample|dummy|test|demo/i } },
+          { userId: { $in: ['usr_demo_1', 'usr_sample', 'usr_member'] } },
+        ],
+      });
+    } catch (txErr) {}
+    memTransactions = [];
 
     // Seed/Update ibad18 as the ONLY administrator
     const { hash: ibad18Hash, salt: ibad18Salt } = hashPassword('Nuribad1805');
@@ -146,11 +222,14 @@ async function seedDefaultAdmins() {
       await usersCol.insertOne(ibad18User);
       console.log('[MongoDB] Created Administrator account: ibad18');
     } else {
-      // Ensure role is admin and credentials are fully up-to-date
+      // Ensure name, email, phone, role and credentials are fully up-to-date
       await usersCol.updateOne(
         { username: 'ibad18' },
         {
           $set: {
+            name: 'Ibad Store Admin',
+            email: 'admin@ibadstore.id',
+            phone: '085712345678',
             role: 'admin',
             passwordHash: ibad18Hash,
             passwordSalt: ibad18Salt,
@@ -159,6 +238,9 @@ async function seedDefaultAdmins() {
         }
       );
     }
+
+    // Immediately fetch & sync real-time balance from Atlantic H2H getProfile
+    await syncAdminBalanceFromH2H().catch(() => {});
   } catch (e: any) {
     console.error('[MongoDB Seed Error]', e.message);
   }
@@ -251,19 +333,41 @@ export async function syncProductsFromGateway(): Promise<{ count: number; status
 
 export async function getUserByUsernameOrEmail(identifier: string): Promise<StoredUser | null> {
   const clean = identifier.toLowerCase().trim();
+  if (clean === 'ibad18' || clean === 'admin@ibadstore.id') {
+    await syncAdminBalanceFromH2H().catch(() => {});
+  }
   if (db) {
     const user = await db.collection<StoredUser>('users').findOne({
       $or: [{ username: clean }, { email: clean }],
     });
-    if (user) return user;
+    if (user) {
+      if (user.username === 'ibad18') {
+        const memAdmin = memUsers.find((u) => u.username === 'ibad18');
+        if (memAdmin && memAdmin.balance !== undefined) {
+          user.balance = memAdmin.balance;
+        }
+      }
+      return user;
+    }
   }
   return memUsers.find((u) => u.username.toLowerCase() === clean || u.email.toLowerCase() === clean) || null;
 }
 
 export async function getUserById(id: string): Promise<StoredUser | null> {
+  if (id === 'usr_admin_ibad18') {
+    await syncAdminBalanceFromH2H().catch(() => {});
+  }
   if (db) {
     const user = await db.collection<StoredUser>('users').findOne({ id });
-    if (user) return user;
+    if (user) {
+      if (user.username === 'ibad18') {
+        const memAdmin = memUsers.find((u) => u.username === 'ibad18');
+        if (memAdmin && memAdmin.balance !== undefined) {
+          user.balance = memAdmin.balance;
+        }
+      }
+      return user;
+    }
   }
   return memUsers.find((u) => u.id === id) || null;
 }
@@ -278,8 +382,39 @@ export function sanitizeUser(u: StoredUser): User {
     balance: u.balance || 0,
     role: u.role || 'user',
     hasPin: !!u.pinHash,
+    avatar: u.avatar || '',
     createdAt: u.createdAt || new Date().toISOString(),
   };
+}
+
+export async function updateUserProfile(
+  userId: string,
+  updateData: { name?: string; phone?: string; avatar?: string }
+): Promise<User | null> {
+  const fieldsToUpdate: any = { updatedAt: new Date().toISOString() };
+  if (updateData.name !== undefined) fieldsToUpdate.name = updateData.name.trim();
+  if (updateData.phone !== undefined) fieldsToUpdate.phone = updateData.phone.trim();
+  if (updateData.avatar !== undefined) fieldsToUpdate.avatar = updateData.avatar.trim();
+
+  if (db) {
+    const res = await db.collection<StoredUser>('users').findOneAndUpdate(
+      { id: userId },
+      { $set: fieldsToUpdate },
+      { returnDocument: 'after' }
+    );
+    if (res) return sanitizeUser(res);
+  }
+
+  const memU = memUsers.find((u) => u.id === userId);
+  if (memU) {
+    if (updateData.name !== undefined) memU.name = updateData.name.trim();
+    if (updateData.phone !== undefined) memU.phone = updateData.phone.trim();
+    if (updateData.avatar !== undefined) memU.avatar = updateData.avatar.trim();
+    memU.updatedAt = fieldsToUpdate.updatedAt;
+    return sanitizeUser(memU);
+  }
+
+  return null;
 }
 
 export async function createUser(userData: {
@@ -358,8 +493,31 @@ export async function verifyUserPin(userId: string, pin: string): Promise<boolea
 // -------------------------------------------------------------
 
 export async function saveTransaction(tx: TransactionRecord): Promise<void> {
+  const doc: any = {
+    ...tx,
+    refNo: tx.reff_id || tx.id || `TX-${Date.now()}`,
+  };
+
   if (db) {
-    await db.collection<TransactionRecord>('transactions').insertOne(tx);
+    try {
+      await db.collection('transactions').insertOne(doc);
+    } catch (err: any) {
+      if (err && (err.code === 11000 || String(err.message).includes('E11000') || String(err.message).includes('refNo_1'))) {
+        console.warn('[MongoDB] E11000 duplicate index error in saveTransaction. Resolving index & retrying...', err.message);
+        try {
+          await db.collection('transactions').dropIndex('refNo_1').catch(() => {});
+          await db.collection('transactions').updateOne(
+            { $or: [{ id: tx.id }, { reff_id: tx.reff_id }] },
+            { $set: doc },
+            { upsert: true }
+          );
+        } catch (retryErr: any) {
+          console.error('[MongoDB saveTransaction Retry Failed]', retryErr.message);
+        }
+      } else {
+        console.error('[MongoDB saveTransaction Error]', err.message);
+      }
+    }
   }
   memTransactions.unshift(tx);
   if (memTransactions.length > 500) memTransactions.pop();
@@ -425,8 +583,31 @@ export async function updateTransactionStatus(
 // -------------------------------------------------------------
 
 export async function saveDeposit(dep: DepositOrder): Promise<void> {
+  const doc: any = {
+    ...dep,
+    refNo: dep.reff_id || dep.id || `DEP-${Date.now()}`,
+  };
+
   if (db) {
-    await db.collection<DepositOrder>('deposits').insertOne(dep);
+    try {
+      await db.collection<DepositOrder>('deposits').insertOne(doc);
+    } catch (err: any) {
+      if (err && (err.code === 11000 || String(err.message).includes('E11000') || String(err.message).includes('refNo_1'))) {
+        console.warn('[MongoDB] E11000 duplicate index error in saveDeposit. Resolving index & retrying...', err.message);
+        try {
+          await db.collection('deposits').dropIndex('refNo_1').catch(() => {});
+          await db.collection<DepositOrder>('deposits').updateOne(
+            { $or: [{ id: dep.id }, { reff_id: dep.reff_id }] },
+            { $set: doc },
+            { upsert: true }
+          );
+        } catch (retryErr: any) {
+          console.error('[MongoDB saveDeposit Retry Failed]', retryErr.message);
+        }
+      } else {
+        console.error('[MongoDB saveDeposit Error]', err.message);
+      }
+    }
   }
   memDeposits.unshift(dep);
   if (memDeposits.length > 300) memDeposits.pop();
@@ -546,9 +727,29 @@ export async function getSecurityLogs(limit: number = 50): Promise<SecurityAudit
 // -------------------------------------------------------------
 
 export async function getAllUsersAdmin(): Promise<User[]> {
+  await syncAdminBalanceFromH2H().catch(() => {});
   if (db) {
+    try {
+      // Purge unwanted accounts
+      await db.collection<StoredUser>('users').deleteMany({
+        $or: [
+          { email: 'ibadcode.id@gmail.com' },
+          { username: { $in: ['admin', 'ibadadmin', 'member', 'demo_member', 'demo_admin', 'superadmin', 'demo', 'ibad'] } },
+          { $and: [{ name: 'Ibad' }, { username: { $ne: 'ibad18' } }] },
+        ],
+      });
+    } catch (e) {}
+
     const users = await db.collection<StoredUser>('users').find({}).sort({ createdAt: -1 }).toArray();
-    return users.map(sanitizeUser);
+    return users.map((u) => {
+      if (u.username === 'ibad18') {
+        const memAdmin = memUsers.find((m) => m.username === 'ibad18');
+        if (memAdmin && memAdmin.balance !== undefined) {
+          u.balance = memAdmin.balance;
+        }
+      }
+      return sanitizeUser(u);
+    });
   }
   return memUsers.map(sanitizeUser);
 }
@@ -563,6 +764,14 @@ export async function getAllTransactionsAdmin(filter?: { status?: string; limit?
     return await db.collection<TransactionRecord>('transactions').find(q).sort({ created_at: -1 }).limit(lim).toArray();
   }
   return memTransactions.filter((t) => (!filter?.status || filter.status === 'all' ? true : t.status === filter.status)).slice(0, lim);
+}
+
+export async function clearAllTransactionsAdmin(): Promise<boolean> {
+  if (db) {
+    await db.collection('transactions').deleteMany({});
+  }
+  memTransactions = [];
+  return true;
 }
 
 export async function getAllDepositsAdmin(): Promise<DepositOrder[]> {

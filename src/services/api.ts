@@ -31,12 +31,31 @@ async function request<T = any>(endpoint: string, options: RequestInit = {}): Pr
       headers,
     });
 
-    const data = await res.json();
-    return data;
+    const contentType = res.headers.get('content-type') || '';
+    if (contentType.includes('application/json')) {
+      const data = await res.json();
+      return data;
+    }
+
+    if (!res.ok) {
+      const text = await res.text().catch(() => '');
+      return {
+        status: false,
+        message: text || `Permintaan gagal (HTTP ${res.status})`,
+        code: res.status,
+      };
+    }
+
+    return {
+      status: true,
+      message: 'Berhasil',
+      data: (await res.text()) as any,
+    };
   } catch (err: any) {
+    console.error('API Request Error:', err);
     return {
       status: false,
-      message: 'Koneksi jaringan terputus atau respon tidak dapat diproses dengan aman.',
+      message: 'Terjadi kendala koneksi ke server. Silakan muat ulang halaman atau coba lagi.',
       code: 500,
     };
   }
@@ -73,6 +92,12 @@ export const api = {
     request('/api/auth/set-pin', {
       method: 'POST',
       body: JSON.stringify({ pin }),
+    }),
+
+  updateProfile: (payload: { name?: string; phone?: string; avatar?: string }) =>
+    request<User>('/api/auth/profile', {
+      method: 'POST',
+      body: JSON.stringify(payload),
     }),
 
   // Products
@@ -143,6 +168,10 @@ export const api = {
   getAdminMetrics: () => request<any>('/api/admin/metrics'),
   getAdminTransactions: (status?: string, limit?: number) =>
     request<TransactionRecord[]>(`/api/admin/transactions?status=${status || 'all'}&limit=${limit || 200}`),
+  clearAdminTransactions: () =>
+    request('/api/admin/transactions/clear', {
+      method: 'POST',
+    }),
   updateAdminTransactionStatus: (payload: { id: string; status: string; sn?: string }) =>
     request('/api/admin/transaction/update-status', {
       method: 'POST',
