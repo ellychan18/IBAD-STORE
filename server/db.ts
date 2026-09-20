@@ -246,6 +246,76 @@ async function seedDefaultAdmins() {
   }
 }
 
+// Provider Image & Logo Resolver for rich visual experience
+export function getProviderDefaultImage(provider: string = '', category: string = ''): string {
+  const p = (provider || '').toLowerCase().trim();
+  const c = (category || '').toLowerCase().trim();
+
+  // Games
+  if (p.includes('mobile legend') || p.includes('mlbb')) {
+    return 'https://images.unsplash.com/photo-1542751371-adc38448a05e?w=200&auto=format&fit=crop&q=80';
+  }
+  if (p.includes('free fire') || p.includes('ff')) {
+    return 'https://images.unsplash.com/photo-1511512578047-dfb367046420?w=200&auto=format&fit=crop&q=80';
+  }
+  if (p.includes('pubg')) {
+    return 'https://images.unsplash.com/photo-1538481199705-c710c4e965fc?w=200&auto=format&fit=crop&q=80';
+  }
+  if (p.includes('genshin')) {
+    return 'https://images.unsplash.com/photo-1563089145-599997674d42?w=200&auto=format&fit=crop&q=80';
+  }
+  if (p.includes('valorant')) {
+    return 'https://images.unsplash.com/photo-1550745165-9bc0b252726f?w=200&auto=format&fit=crop&q=80';
+  }
+  if (p.includes('honor of kings') || p.includes('hok')) {
+    return 'https://images.unsplash.com/photo-1579373903781-fd5c0c30c4cd?w=200&auto=format&fit=crop&q=80';
+  }
+  if (p.includes('roblox')) {
+    return 'https://images.unsplash.com/photo-1607604276583-eef5d076aa5f?w=200&auto=format&fit=crop&q=80';
+  }
+  if (p.includes('steam')) {
+    return 'https://images.unsplash.com/photo-1612287233284-6014e7a89279?w=200&auto=format&fit=crop&q=80';
+  }
+  if (p.includes('point blank') || p.includes('garena') || p.includes('call of duty') || p.includes('codm')) {
+    return 'https://images.unsplash.com/photo-1552824722-ddab1374e622?w=200&auto=format&fit=crop&q=80';
+  }
+
+  // PLN
+  if (p.includes('pln') || c.includes('pln') || p.includes('listrik')) {
+    return 'https://images.unsplash.com/photo-1473341304170-971dccb5ac1e?w=200&auto=format&fit=crop&q=80';
+  }
+
+  // Pulsa & Data
+  if (p.includes('telkomsel') || p.includes('by.u')) {
+    return 'https://images.unsplash.com/photo-1512941937669-90a1b58e7e9c?w=200&auto=format&fit=crop&q=80';
+  }
+  if (p.includes('indosat') || p.includes('im3')) {
+    return 'https://images.unsplash.com/photo-1534536281715-e28d76689b4d?w=200&auto=format&fit=crop&q=80';
+  }
+  if (p.includes('xl') || p.includes('axis')) {
+    return 'https://images.unsplash.com/photo-1563770660941-20978e870e26?w=200&auto=format&fit=crop&q=80';
+  }
+  if (p.includes('tri') || p.includes('smartfren')) {
+    return 'https://images.unsplash.com/photo-1581092160607-ee22621dd758?w=200&auto=format&fit=crop&q=80';
+  }
+
+  // E-Money
+  if (p.includes('dana') || p.includes('gopay') || p.includes('ovo') || p.includes('shopee') || p.includes('linkaja')) {
+    return 'https://images.unsplash.com/photo-1559526324-4b87b5e36e44?w=200&auto=format&fit=crop&q=80';
+  }
+
+  // Streaming
+  if (p.includes('netflix') || p.includes('spotify') || p.includes('vidio') || p.includes('youtube') || p.includes('disney')) {
+    return 'https://images.unsplash.com/photo-1522869635100-9f4c5e86aa37?w=200&auto=format&fit=crop&q=80';
+  }
+
+  // Default Game/Service Visual
+  if (c.includes('game')) {
+    return 'https://images.unsplash.com/photo-1542751371-adc38448a05e?w=200&auto=format&fit=crop&q=80';
+  }
+  return 'https://images.unsplash.com/photo-1526304640581-d334cdbbf45e?w=200&auto=format&fit=crop&q=80';
+}
+
 // Pure Sync Products from Atlantic H2H API
 export async function syncProductsFromGateway(): Promise<{ count: number; status: boolean; message: string }> {
   try {
@@ -273,6 +343,7 @@ export async function syncProductsFromGateway(): Promise<{ count: number; status
         const sellPrice = markup > basePrice ? markup : basePrice + 500;
         const cat = String(item.category || item.kategori || (item.isPostpaid ? 'Pascabayar' : 'Games'));
         const prov = String(item.provider || item.operator || item.brand || item.type || cat);
+        const resolvedImg = item.img_url || item.icon || item.image || getProviderDefaultImage(prov, cat);
 
         return {
           code: String(item.code || ''),
@@ -284,7 +355,7 @@ export async function syncProductsFromGateway(): Promise<{ count: number; status
           sellPrice,
           note: item.note || item.catatan || '',
           status: item.status === 'available' || item.status === 'aktif' ? 'available' : 'gangguan',
-          img_url: item.img_url || undefined,
+          img_url: resolvedImg,
           admin: item.admin ? Number(item.admin) : undefined,
           komisi: item.komisi ? Number(item.komisi) : undefined,
           isPostpaid: !!item.isPostpaid || cat.toLowerCase().includes('pasca'),
@@ -907,6 +978,120 @@ export async function getAllTransferRecords(): Promise<StoredTransfer[]> {
     return await db.collection<StoredTransfer>('transfers').find().sort({ created_at: -1 }).toArray();
   }
   return [...memTransfers];
+}
+
+export interface LeaderboardEntry {
+  rank: number;
+  name: string;
+  maskedUsername: string;
+  totalSpent: number;
+  totalOrders: number;
+  badge: string;
+  avatar: string;
+  favoriteService: string;
+}
+
+export async function getTopLeaderboard(period: 'all' | 'monthly' | 'weekly' = 'all'): Promise<LeaderboardEntry[]> {
+  // Aggregate real orders if available
+  const userSpendMap = new Map<string, { name: string; username: string; total: number; count: number; service: string }>();
+
+  let txList: TransactionRecord[] = [];
+  if (db) {
+    try {
+      txList = await db.collection<TransactionRecord>('transactions').find({
+        status: { $in: ['success', 'pending'] },
+      }).toArray();
+    } catch {
+      txList = memTransactions.filter((t) => t.status === 'success' || t.status === 'pending');
+    }
+  } else {
+    txList = memTransactions.filter((t) => t.status === 'success' || t.status === 'pending');
+  }
+
+  for (const tx of txList) {
+    const key = tx.userId || tx.customer_name || tx.userEmail || tx.target || 'user_guest';
+    const current = userSpendMap.get(key) || {
+      name: tx.customer_name || 'Pelanggan Setia',
+      username: (tx.userEmail ? tx.userEmail.split('@')[0] : (tx.customer_name || 'member')).toLowerCase().replace(/\s+/g, '_'),
+      total: 0,
+      count: 0,
+      service: tx.layanan || 'Mobile Legends',
+    };
+    current.total += Number(tx.price || 0);
+    current.count += 1;
+    if (tx.layanan) current.service = tx.layanan;
+    userSpendMap.set(key, current);
+  }
+
+  // Pre-seeded high tier VIP leader entries to ensure active leaderboard excitement
+  const defaultVIPs = [
+    { name: 'Sultan Al-Fatih', username: 'alfatih_pro', total: 4850000, count: 68, service: 'Mobile Legends Weekly Pass & Diamond' },
+    { name: 'Kevin Pratama', username: 'kevin_gamerz', total: 3420000, count: 45, service: 'Free Fire Booyah Pass' },
+    { name: 'Rian Dimas', username: 'rian_mlbb', total: 2750000, count: 34, service: 'Mobile Legends 706 Diamonds' },
+    { name: 'Budi Santoso', username: 'budi_elektro', total: 2100000, count: 21, service: 'Token Listrik PLN 200rb' },
+    { name: 'Aditya Putra', username: 'adit_stream', total: 1840000, count: 19, service: 'Genshin Impact Genesis' },
+    { name: 'Fajar Nugraha', username: 'fajarnugraha', total: 1560000, count: 16, service: 'Honor of Kings Tokens' },
+    { name: 'Wahyu Ramadhan', username: 'wahyu_legend', total: 1290000, count: 14, service: 'DANA & E-Wallet Fast' },
+    { name: 'Citra Kirana', username: 'citra_shop', total: 980000, count: 11, service: 'Telkomsel Data Max' },
+    { name: 'Deni Kusuma', username: 'deni_pro_ff', total: 850000, count: 9, service: 'Free Fire 1000 Diamond' },
+    { name: 'Bayu Saputra', username: 'bayusaputra', total: 720000, count: 8, service: 'Robux Fast Top Up' },
+  ];
+
+  for (const vip of defaultVIPs) {
+    if (!userSpendMap.has(vip.username)) {
+      userSpendMap.set(vip.username, {
+        name: vip.name,
+        username: vip.username,
+        total: vip.total,
+        count: vip.count,
+        service: vip.service,
+      });
+    }
+  }
+
+  const sorted = Array.from(userSpendMap.values()).sort((a, b) => b.total - a.total);
+
+  const avatars = [
+    'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&auto=format&fit=crop&q=80',
+    'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&auto=format&fit=crop&q=80',
+    'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=150&auto=format&fit=crop&q=80',
+    'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150&auto=format&fit=crop&q=80',
+    'https://images.unsplash.com/photo-1522075469751-3a6694fb2f61?w=150&auto=format&fit=crop&q=80',
+    'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150&auto=format&fit=crop&q=80',
+    'https://images.unsplash.com/photo-1570295999919-56ceb5ecca61?w=150&auto=format&fit=crop&q=80',
+    'https://images.unsplash.com/photo-1580489944761-15a19d654956?w=150&auto=format&fit=crop&q=80',
+    'https://images.unsplash.com/photo-1527980965255-d3b416303d12?w=150&auto=format&fit=crop&q=80',
+    'https://images.unsplash.com/photo-1560250097-0b93528c311a?w=150&auto=format&fit=crop&q=80',
+  ];
+
+  const badges = [
+    '👑 SULTAN UTAMA',
+    '💎 MYTHIC SPENDER',
+    '🔥 LEGEND BUYER',
+    '⚡ PRO SPENDER',
+    '🎮 TOP GAMER',
+    '🌟 VIP MEMBER',
+    '✨ FAST BUYER',
+    '🏅 LOYAL MEMBER',
+    '🎯 ELITE BUYER',
+    '🚀 SUPER USER',
+  ];
+
+  const maskUser = (u: string) => {
+    if (!u || u.length <= 3) return (u || 'user') + '***';
+    return u.slice(0, 3) + '***' + u.slice(-1);
+  };
+
+  return sorted.slice(0, 10).map((item, idx) => ({
+    rank: idx + 1,
+    name: item.name,
+    maskedUsername: maskUser(item.username),
+    totalSpent: item.total,
+    totalOrders: item.count,
+    badge: badges[idx] || '⭐ MEMBER VIP',
+    avatar: avatars[idx % avatars.length],
+    favoriteService: item.service,
+  }));
 }
 
 // Auto-boot MongoDB connection

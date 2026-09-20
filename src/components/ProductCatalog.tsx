@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef } from 'react';
 import {
   Gamepad2,
   Zap,
@@ -13,10 +13,17 @@ import {
   Sparkles,
   ArrowRight,
   ChevronRight,
+  ChevronLeft,
   Tv,
   Layers,
+  TrendingDown,
+  TrendingUp,
+  Award,
+  SlidersHorizontal,
 } from 'lucide-react';
 import type { ProductItem } from '../types.js';
+
+type SortFilterType = 'all' | 'rekomendasi' | 'termurah' | 'termahal';
 
 interface ProductCatalogProps {
   products: ProductItem[];
@@ -79,6 +86,66 @@ const POPULAR_GAMES_SHOWCASE = [
   },
 ];
 
+// Fallback visual helper for product images
+export function getProductThumbnail(item: ProductItem): string {
+  if (item.img_url && item.img_url.trim().startsWith('http')) {
+    return item.img_url;
+  }
+  const prov = (item.provider || '').toLowerCase();
+  const cat = (item.category || '').toLowerCase();
+
+  if (prov.includes('mobile legend') || prov.includes('mlbb')) {
+    return 'https://images.unsplash.com/photo-1542751371-adc38448a05e?w=200&auto=format&fit=crop&q=80';
+  }
+  if (prov.includes('free fire') || prov.includes('ff')) {
+    return 'https://images.unsplash.com/photo-1511512578047-dfb367046420?w=200&auto=format&fit=crop&q=80';
+  }
+  if (prov.includes('pubg')) {
+    return 'https://images.unsplash.com/photo-1538481199705-c710c4e965fc?w=200&auto=format&fit=crop&q=80';
+  }
+  if (prov.includes('genshin')) {
+    return 'https://images.unsplash.com/photo-1563089145-599997674d42?w=200&auto=format&fit=crop&q=80';
+  }
+  if (prov.includes('valorant')) {
+    return 'https://images.unsplash.com/photo-1550745165-9bc0b252726f?w=200&auto=format&fit=crop&q=80';
+  }
+  if (prov.includes('honor of kings') || prov.includes('hok')) {
+    return 'https://images.unsplash.com/photo-1579373903781-fd5c0c30c4cd?w=200&auto=format&fit=crop&q=80';
+  }
+  if (prov.includes('roblox')) {
+    return 'https://images.unsplash.com/photo-1607604276583-eef5d076aa5f?w=200&auto=format&fit=crop&q=80';
+  }
+  if (prov.includes('steam')) {
+    return 'https://images.unsplash.com/photo-1612287233284-6014e7a89279?w=200&auto=format&fit=crop&q=80';
+  }
+  if (prov.includes('point blank') || prov.includes('garena') || prov.includes('call of duty')) {
+    return 'https://images.unsplash.com/photo-1552824722-ddab1374e622?w=200&auto=format&fit=crop&q=80';
+  }
+  if (prov.includes('pln') || cat.includes('pln')) {
+    return 'https://images.unsplash.com/photo-1473341304170-971dccb5ac1e?w=200&auto=format&fit=crop&q=80';
+  }
+  if (prov.includes('telkomsel') || prov.includes('by.u')) {
+    return 'https://images.unsplash.com/photo-1512941937669-90a1b58e7e9c?w=200&auto=format&fit=crop&q=80';
+  }
+  if (prov.includes('indosat') || prov.includes('im3')) {
+    return 'https://images.unsplash.com/photo-1534536281715-e28d76689b4d?w=200&auto=format&fit=crop&q=80';
+  }
+  if (prov.includes('xl') || prov.includes('axis')) {
+    return 'https://images.unsplash.com/photo-1563770660941-20978e870e26?w=200&auto=format&fit=crop&q=80';
+  }
+  if (prov.includes('tri') || prov.includes('smartfren')) {
+    return 'https://images.unsplash.com/photo-1581092160607-ee22621dd758?w=200&auto=format&fit=crop&q=80';
+  }
+  if (prov.includes('dana') || prov.includes('gopay') || prov.includes('ovo') || prov.includes('shopee') || prov.includes('linkaja')) {
+    return 'https://images.unsplash.com/photo-1559526324-4b87b5e36e44?w=200&auto=format&fit=crop&q=80';
+  }
+  if (prov.includes('netflix') || prov.includes('spotify') || prov.includes('vidio') || prov.includes('youtube')) {
+    return 'https://images.unsplash.com/photo-1522869635100-9f4c5e86aa37?w=200&auto=format&fit=crop&q=80';
+  }
+
+  return 'https://images.unsplash.com/photo-1542751371-adc38448a05e?w=200&auto=format&fit=crop&q=80';
+}
+
 export const ProductCatalog: React.FC<ProductCatalogProps> = ({
   products,
   onSelectProduct,
@@ -88,6 +155,18 @@ export const ProductCatalog: React.FC<ProductCatalogProps> = ({
   const [selectedCategory, setSelectedCategory] = useState<string>('All');
   const [selectedBrand, setSelectedBrand] = useState<string>('All');
   const [searchQuery, setSearchQuery] = useState<string>('');
+  const [sortFilter, setSortFilter] = useState<SortFilterType>('all');
+
+  const categoryScrollRef = useRef<HTMLDivElement>(null);
+  const brandScrollRef = useRef<HTMLDivElement>(null);
+  const showcaseScrollRef = useRef<HTMLDivElement>(null);
+
+  const scrollContainer = (ref: React.RefObject<HTMLDivElement | null>, direction: 'left' | 'right') => {
+    if (ref.current) {
+      const scrollAmount = direction === 'left' ? -280 : 280;
+      ref.current.scrollBy({ left: scrollAmount, behavior: 'smooth' });
+    }
+  };
 
   const categories = [
     { id: 'All', name: 'Semua Layanan', icon: Flame },
@@ -97,6 +176,26 @@ export const ProductCatalog: React.FC<ProductCatalogProps> = ({
     { id: 'E-Money', name: 'Dompet Digital', icon: CreditCard },
     { id: 'Streaming', name: 'Streaming & Akun', icon: Tv },
   ];
+
+  // Helper to determine if a product is "Rekomendasi" (popular, best seller, fast moving denominations)
+  const isRecommendedProduct = (p: ProductItem): boolean => {
+    const name = (p.name || '').toLowerCase();
+    const prov = (p.provider || '').toLowerCase();
+    const code = (p.code || '').toLowerCase();
+
+    // MLBB Weekly Pass & standard bestsellers
+    if (name.includes('weekly pass') || name.includes('twilight') || name.includes('starlight')) return true;
+    if (name.includes('86 diamond') || name.includes('172 diamond') || name.includes('257 diamond') || name.includes('706 diamond')) return true;
+    if (name.includes('140 diamond') || name.includes('355 diamond') || name.includes('720 diamond') || name.includes('membership')) return true; // FF
+    if (name.includes('token pln 20.000') || name.includes('token pln 50.000') || name.includes('token pln 100.000')) return true;
+    if (name.includes('5.000') || name.includes('10.000') || name.includes('25.000') || name.includes('50.000') || name.includes('100.000')) {
+      if (prov.includes('telkomsel') || prov.includes('indosat') || prov.includes('xl') || prov.includes('dana') || prov.includes('gopay')) {
+        return true;
+      }
+    }
+    if (name.includes('flash') || name.includes('promo') || name.includes('terlaris') || name.includes('hemat') || name.includes('populer')) return true;
+    return false;
+  };
 
   // Filter out postpaid items from the prabayar catalog
   const prabayarProducts = useMemo(() => {
@@ -179,9 +278,9 @@ export const ProductCatalog: React.FC<ProductCatalogProps> = ({
     return Array.from(brandsSet).sort();
   }, [prabayarProducts, selectedCategory]);
 
-  // Filtered products
+  // Filtered and sorted products
   const filteredProducts = useMemo(() => {
-    return prabayarProducts.filter((p) => {
+    let result = prabayarProducts.filter((p) => {
       if (!p) return false;
       const matchCat = matchesCategory(p, selectedCategory);
 
@@ -203,9 +302,29 @@ export const ProductCatalog: React.FC<ProductCatalogProps> = ({
         pProvider.includes(query) ||
         pCategory.includes(query);
 
-      return matchCat && matchBrand && matchSearch;
+      // Filter for 'rekomendasi'
+      const matchRekomendasi = sortFilter !== 'rekomendasi' || isRecommendedProduct(p);
+
+      return matchCat && matchBrand && matchSearch && matchRekomendasi;
     });
-  }, [prabayarProducts, selectedCategory, selectedBrand, searchQuery]);
+
+    // Apply sorting for 'termurah' and 'termahal'
+    if (sortFilter === 'termurah') {
+      result = [...result].sort((a, b) => {
+        const priceA = a.sellPrice || a.price || 0;
+        const priceB = b.sellPrice || b.price || 0;
+        return priceA - priceB;
+      });
+    } else if (sortFilter === 'termahal') {
+      result = [...result].sort((a, b) => {
+        const priceA = a.sellPrice || a.price || 0;
+        const priceB = b.sellPrice || b.price || 0;
+        return priceB - priceA;
+      });
+    }
+
+    return result;
+  }, [prabayarProducts, selectedCategory, selectedBrand, searchQuery, sortFilter]);
 
   // Group filtered products by provider
   const groupedByProvider = useMemo(() => {
@@ -221,20 +340,41 @@ export const ProductCatalog: React.FC<ProductCatalogProps> = ({
 
   return (
     <div className="space-y-8">
-      {/* Visual Quick Showcase Cards (when on All and no search) */}
+      {/* Visual Quick Showcase Cards (when on All and no search) - Swipeable & Scrollable */}
       {selectedCategory === 'All' && selectedBrand === 'All' && !searchQuery && (
-        <div className="space-y-3">
+        <div className="space-y-3.5">
           <div className="flex items-center justify-between">
             <h3 className="text-sm sm:text-base font-black text-slate-900 flex items-center gap-2">
               <Sparkles className="w-4 h-4 text-indigo-600" />
               <span>Layanan Populer &amp; Paling Banyak Dipesan</span>
             </h3>
-            <span className="text-xs text-slate-500 font-semibold hidden sm:inline">
-              Pilihan terfavorit gamer &amp; member Ibad Store
-            </span>
+            <div className="flex items-center gap-1.5">
+              <span className="text-xs text-slate-500 font-semibold hidden md:inline mr-2">
+                Geser untuk pilihan lainnya
+              </span>
+              <button
+                onClick={() => scrollContainer(showcaseScrollRef, 'left')}
+                className="p-1 rounded-full bg-white border border-slate-200 text-slate-700 shadow-xs hover:bg-slate-100 hover:text-indigo-600 cursor-pointer"
+                title="Geser layanan ke kiri"
+                aria-label="Geser ke kiri"
+              >
+                <ChevronLeft className="w-3.5 h-3.5" />
+              </button>
+              <button
+                onClick={() => scrollContainer(showcaseScrollRef, 'right')}
+                className="p-1 rounded-full bg-white border border-slate-200 text-slate-700 shadow-xs hover:bg-slate-100 hover:text-indigo-600 cursor-pointer"
+                title="Geser layanan ke kanan"
+                aria-label="Geser ke kanan"
+              >
+                <ChevronRight className="w-3.5 h-3.5" />
+              </button>
+            </div>
           </div>
 
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3.5">
+          <div
+            ref={showcaseScrollRef}
+            className="flex sm:grid sm:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4 overflow-x-auto pb-2 sm:pb-0 scrollbar-none horizontal-scroll-touch"
+          >
             {POPULAR_GAMES_SHOWCASE.map((showcase) => (
               <div
                 key={showcase.name}
@@ -244,7 +384,7 @@ export const ProductCatalog: React.FC<ProductCatalogProps> = ({
                   setSelectedBrand('All');
                   setSearchQuery(showcase.providerKey);
                 }}
-                className={`group relative overflow-hidden rounded-2xl border ${showcase.accentBorder} bg-gradient-to-br ${showcase.color} p-4 cursor-pointer transition-all duration-300 hover:-translate-y-1 hover:shadow-xl hover:shadow-indigo-500/20 flex flex-col justify-between min-h-[160px] text-white`}
+                className={`group relative overflow-hidden rounded-2xl sm:rounded-3xl border ${showcase.accentBorder} bg-gradient-to-br ${showcase.color} p-3.5 sm:p-5 cursor-pointer transition-all duration-300 hover:-translate-y-1 hover:shadow-xl hover:shadow-indigo-500/20 flex flex-col justify-between min-h-[145px] sm:min-h-[170px] w-[200px] sm:w-auto shrink-0 sm:shrink text-white`}
               >
                 {/* Background Image Thumbnail */}
                 <div className="absolute inset-0 opacity-25 group-hover:opacity-35 transition-opacity pointer-events-none mix-blend-overlay">
@@ -258,20 +398,20 @@ export const ProductCatalog: React.FC<ProductCatalogProps> = ({
 
                 {/* Top Badge */}
                 <div className="relative z-10">
-                  <span className="text-[9px] font-black px-2 py-0.5 rounded-full bg-white/90 text-slate-900 shadow-sm tracking-wider">
+                  <span className="text-[9px] sm:text-[10px] font-black px-2 py-0.5 rounded-full bg-white/90 text-slate-900 shadow-xs tracking-wider">
                     {showcase.badge}
                   </span>
                 </div>
 
                 {/* Info Text */}
-                <div className="relative z-10 space-y-1 pt-4">
-                  <h4 className="font-black text-white text-xs sm:text-sm group-hover:text-amber-200 transition-colors line-clamp-1 drop-shadow-sm">
+                <div className="relative z-10 space-y-1 pt-3 sm:pt-4">
+                  <h4 className="font-black text-white text-xs sm:text-sm group-hover:text-amber-200 transition-colors line-clamp-1 drop-shadow-xs">
                     {showcase.name}
                   </h4>
-                  <p className="text-[10px] text-white/90 line-clamp-1 font-medium">
+                  <p className="text-[10px] sm:text-xs text-white/90 line-clamp-1 font-medium">
                     {showcase.desc}
                   </p>
-                  <div className="text-[10px] text-white font-bold flex items-center gap-1 pt-1">
+                  <div className="text-[10px] sm:text-xs text-white font-bold flex items-center gap-1 pt-1">
                     <span>Lihat Pilihan</span>
                     <ArrowRight className="w-3 h-3 group-hover:translate-x-1 transition-transform" />
                   </div>
@@ -283,46 +423,72 @@ export const ProductCatalog: React.FC<ProductCatalogProps> = ({
       )}
 
       {/* Category Pills & Search Controls */}
-      <div className="space-y-4 pt-2">
-        <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
-          {/* Main Category Tabs */}
-          <div className="flex items-center gap-2 overflow-x-auto pb-2 sm:pb-0 scrollbar-none">
-            {categories.map((cat) => {
-              const Icon = cat.icon;
-              const active = selectedCategory === cat.id;
-              return (
-                <button
-                  key={cat.id}
-                  id={`cat-filter-${String(cat.id || 'cat').toLowerCase()}`}
-                  onClick={() => {
-                    setSelectedCategory(cat.id);
-                    setSelectedBrand('All');
-                    setSearchQuery('');
-                  }}
-                  className={`flex items-center gap-2 px-4 py-2.5 rounded-2xl text-xs font-black whitespace-nowrap transition-all cursor-pointer ${
-                    active
-                      ? 'bg-gradient-to-r from-cyan-600 via-indigo-600 to-violet-600 text-white shadow-md shadow-indigo-500/25'
-                      : 'bg-white text-slate-700 hover:text-slate-900 hover:bg-slate-50 border border-slate-200 shadow-sm'
-                  }`}
-                >
-                  <Icon className="w-4 h-4" />
-                  <span>{cat.name}</span>
-                </button>
-              );
-            })}
+      <div className="space-y-4 pt-1 sm:pt-2">
+        <div className="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-3">
+          {/* Main Category Tabs with scroll navigation */}
+          <div className="relative flex items-center min-w-0 flex-1">
+            {/* Scroll Left Button */}
+            <button
+              onClick={() => scrollContainer(categoryScrollRef, 'left')}
+              className="hidden sm:flex absolute left-0 z-10 p-1.5 rounded-full bg-white/95 border border-slate-200 text-slate-700 shadow-md hover:bg-slate-100 hover:text-indigo-600 cursor-pointer -translate-x-1"
+              aria-label="Geser kategori ke kiri"
+              title="Geser ke kiri"
+            >
+              <ChevronLeft className="w-4 h-4" />
+            </button>
+
+            {/* Scrollable Container */}
+            <div
+              ref={categoryScrollRef}
+              className="flex items-center gap-1.5 sm:gap-2 overflow-x-auto pb-2 sm:pb-0 scrollbar-none horizontal-scroll-touch sm:px-6 w-full"
+            >
+              {categories.map((cat) => {
+                const Icon = cat.icon;
+                const active = selectedCategory === cat.id;
+                return (
+                  <button
+                    key={cat.id}
+                    id={`cat-filter-${String(cat.id || 'cat').toLowerCase()}`}
+                    onClick={() => {
+                      setSelectedCategory(cat.id);
+                      setSelectedBrand('All');
+                      setSearchQuery('');
+                    }}
+                    className={`flex items-center gap-1.5 sm:gap-2 px-3.5 sm:px-4 py-2 sm:py-2.5 rounded-2xl text-xs font-black whitespace-nowrap transition-all cursor-pointer shrink-0 ${
+                      active
+                        ? 'bg-gradient-to-r from-cyan-600 via-indigo-600 to-violet-600 text-white shadow-md shadow-indigo-500/25'
+                        : 'bg-white text-slate-700 hover:text-slate-900 hover:bg-slate-50 border border-slate-200/90 shadow-xs'
+                    }`}
+                  >
+                    <Icon className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" />
+                    <span>{cat.name}</span>
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Scroll Right Button */}
+            <button
+              onClick={() => scrollContainer(categoryScrollRef, 'right')}
+              className="hidden sm:flex absolute right-0 z-10 p-1.5 rounded-full bg-white/95 border border-slate-200 text-slate-700 shadow-md hover:bg-slate-100 hover:text-indigo-600 cursor-pointer translate-x-1"
+              aria-label="Geser kategori ke kanan"
+              title="Geser ke kanan"
+            >
+              <ChevronRight className="w-4 h-4" />
+            </button>
           </div>
 
           {/* Search Input & Refresh Button */}
-          <div className="flex items-center gap-2">
-            <div className="relative flex-1 sm:w-64">
+          <div className="flex items-center gap-2 shrink-0">
+            <div className="relative flex-1 sm:w-64 lg:w-72">
               <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
               <input
                 id="catalog-search-input"
                 type="text"
-                placeholder="Cari game, diamond, pulsa..."
+                placeholder="Cari game, diamond, pulsa, token..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-10 pr-4 py-2.5 bg-white border border-slate-200 focus:border-indigo-500 rounded-2xl text-xs text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-indigo-500 shadow-sm font-semibold"
+                className="w-full pl-10 pr-4 py-2.5 bg-white border border-slate-200/90 focus:border-indigo-500 rounded-2xl text-xs text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-indigo-500 shadow-xs font-semibold"
               />
             </div>
 
@@ -330,8 +496,8 @@ export const ProductCatalog: React.FC<ProductCatalogProps> = ({
               id="btn-sync-catalog"
               onClick={onRefreshProducts}
               disabled={loading}
-              title="Perbarui harga langsung dari Atlantic H2H Gateway"
-              className="p-2.5 bg-white border border-slate-200 hover:border-indigo-400 text-slate-700 hover:text-indigo-600 rounded-2xl text-xs transition-colors cursor-pointer flex items-center gap-1.5 shadow-sm"
+              title="Perbarui data harga dan status produk realtime"
+              className="p-2.5 bg-white border border-slate-200/90 hover:border-indigo-400 text-slate-700 hover:text-indigo-600 rounded-2xl text-xs transition-colors cursor-pointer flex items-center gap-1.5 shadow-xs shrink-0"
             >
               <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin text-indigo-600' : ''}`} />
               <span className="hidden md:inline text-[11px] font-bold">Sync</span>
@@ -339,41 +505,132 @@ export const ProductCatalog: React.FC<ProductCatalogProps> = ({
           </div>
         </div>
 
-        {/* Sub-Brand Chips */}
-        {availableBrands.length > 1 && (
-          <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none">
+        {/* Filter Controls: Rekomendasi, Termurah, Termahal */}
+        <div className="flex flex-wrap items-center justify-between gap-2.5 pt-1">
+          <div className="flex items-center gap-1.5 overflow-x-auto pb-1 scrollbar-none horizontal-scroll-touch max-w-full">
             <span className="text-[11px] font-bold text-slate-500 mr-1 flex items-center gap-1 shrink-0">
-              <Layers className="w-3.5 h-3.5 text-indigo-600" />
-              <span>Provider:</span>
+              <SlidersHorizontal className="w-3.5 h-3.5 text-indigo-600" />
+              <span>Urutkan:</span>
             </span>
+            
             <button
-              onClick={() => setSelectedBrand('All')}
-              className={`px-3 py-1.5 rounded-xl text-[11px] font-bold transition-all cursor-pointer whitespace-nowrap ${
-                selectedBrand === 'All'
-                  ? 'bg-indigo-600 text-white shadow-sm'
-                  : 'bg-white text-slate-600 hover:text-slate-900 border border-slate-200'
+              id="filter-sort-all"
+              onClick={() => setSortFilter('all')}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap shrink-0 ${
+                sortFilter === 'all'
+                  ? 'bg-slate-900 text-white shadow-xs'
+                  : 'bg-white text-slate-700 hover:text-slate-900 border border-slate-200 hover:bg-slate-50'
               }`}
             >
-              Semua ({prabayarProducts.filter((p) => matchesCategory(p, selectedCategory)).length})
+              <span>Semua</span>
             </button>
-            {availableBrands.slice(0, 25).map((brand) => {
-              const count = prabayarProducts.filter(
-                (p) => matchesCategory(p, selectedCategory) && p.provider === brand
-              ).length;
-              return (
-                <button
-                  key={brand}
-                  onClick={() => setSelectedBrand(brand)}
-                  className={`px-3 py-1.5 rounded-xl text-[11px] font-bold transition-all cursor-pointer whitespace-nowrap ${
-                    selectedBrand === brand
-                      ? 'bg-indigo-600 text-white shadow-sm'
-                      : 'bg-white text-slate-600 hover:text-slate-900 border border-slate-200'
-                  }`}
-                >
-                  {brand} <span className="opacity-70 text-[10px]">({count})</span>
-                </button>
-              );
-            })}
+
+            <button
+              id="filter-sort-rekomendasi"
+              onClick={() => setSortFilter(sortFilter === 'rekomendasi' ? 'all' : 'rekomendasi')}
+              className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap shrink-0 ${
+                sortFilter === 'rekomendasi'
+                  ? 'bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-md shadow-orange-500/20'
+                  : 'bg-white text-amber-700 hover:text-amber-800 border border-amber-200 hover:bg-amber-50/60'
+              }`}
+            >
+              <Award className="w-3.5 h-3.5" />
+              <span>⭐ Rekomendasi</span>
+            </button>
+
+            <button
+              id="filter-sort-termurah"
+              onClick={() => setSortFilter(sortFilter === 'termurah' ? 'all' : 'termurah')}
+              className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap shrink-0 ${
+                sortFilter === 'termurah'
+                  ? 'bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-md shadow-emerald-500/20'
+                  : 'bg-white text-emerald-700 hover:text-emerald-800 border border-emerald-200 hover:bg-emerald-50/60'
+              }`}
+            >
+              <TrendingDown className="w-3.5 h-3.5" />
+              <span>💰 Termurah</span>
+            </button>
+
+            <button
+              id="filter-sort-termahal"
+              onClick={() => setSortFilter(sortFilter === 'termahal' ? 'all' : 'termahal')}
+              className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap shrink-0 ${
+                sortFilter === 'termahal'
+                  ? 'bg-gradient-to-r from-indigo-600 to-purple-600 text-white shadow-md shadow-indigo-500/20'
+                  : 'bg-white text-indigo-700 hover:text-indigo-800 border border-indigo-200 hover:bg-indigo-50/60'
+              }`}
+            >
+              <TrendingUp className="w-3.5 h-3.5" />
+              <span>💎 Termahal</span>
+            </button>
+          </div>
+
+          <div className="text-[11px] font-bold text-slate-500">
+            Menampilkan <span className="text-indigo-600 font-mono font-extrabold">{filteredProducts.length}</span> produk
+          </div>
+        </div>
+
+        {/* Sub-Brand / Provider Chips with Swipe and Scroll Controls */}
+        {availableBrands.length > 1 && (
+          <div className="relative flex items-center bg-slate-50/80 p-2 sm:p-2.5 rounded-2xl border border-slate-200/80">
+            {/* Scroll Provider Left */}
+            <button
+              onClick={() => scrollContainer(brandScrollRef, 'left')}
+              className="hidden sm:flex absolute left-1 z-10 p-1 rounded-full bg-white border border-slate-200 text-slate-700 shadow-sm hover:bg-slate-100 hover:text-indigo-600 cursor-pointer"
+              aria-label="Geser provider ke kiri"
+              title="Geser provider ke kiri"
+            >
+              <ChevronLeft className="w-3.5 h-3.5" />
+            </button>
+
+            {/* Provider Horizontal Scrollable List */}
+            <div
+              ref={brandScrollRef}
+              className="flex items-center gap-1.5 overflow-x-auto pb-0.5 scrollbar-none horizontal-scroll-touch sm:px-6 w-full"
+            >
+              <span className="text-[11px] font-bold text-slate-500 mr-1 flex items-center gap-1 shrink-0">
+                <Layers className="w-3.5 h-3.5 text-indigo-600" />
+                <span>Provider:</span>
+              </span>
+              <button
+                onClick={() => setSelectedBrand('All')}
+                className={`px-3 py-1.5 rounded-xl text-[11px] font-bold transition-all cursor-pointer whitespace-nowrap shrink-0 ${
+                  selectedBrand === 'All'
+                    ? 'bg-indigo-600 text-white shadow-sm'
+                    : 'bg-white text-slate-600 hover:text-slate-900 border border-slate-200'
+                }`}
+              >
+                Semua ({prabayarProducts.filter((p) => matchesCategory(p, selectedCategory)).length})
+              </button>
+              {availableBrands.slice(0, 35).map((brand) => {
+                const count = prabayarProducts.filter(
+                  (p) => matchesCategory(p, selectedCategory) && p.provider === brand
+                ).length;
+                return (
+                  <button
+                    key={brand}
+                    onClick={() => setSelectedBrand(brand)}
+                    className={`px-3 py-1.5 rounded-xl text-[11px] font-bold transition-all cursor-pointer whitespace-nowrap shrink-0 ${
+                      selectedBrand === brand
+                        ? 'bg-indigo-600 text-white shadow-sm'
+                        : 'bg-white text-slate-600 hover:text-slate-900 border border-slate-200'
+                    }`}
+                  >
+                    {brand} <span className="opacity-70 text-[10px]">({count})</span>
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Scroll Provider Right */}
+            <button
+              onClick={() => scrollContainer(brandScrollRef, 'right')}
+              className="hidden sm:flex absolute right-1 z-10 p-1 rounded-full bg-white border border-slate-200 text-slate-700 shadow-sm hover:bg-slate-100 hover:text-indigo-600 cursor-pointer"
+              aria-label="Geser provider ke kanan"
+              title="Geser provider ke kanan"
+            >
+              <ChevronRight className="w-3.5 h-3.5" />
+            </button>
           </div>
         )}
       </div>
@@ -382,8 +639,8 @@ export const ProductCatalog: React.FC<ProductCatalogProps> = ({
       {loading && products.length === 0 ? (
         <div className="text-center py-16 bg-white border border-slate-200 rounded-3xl p-8 space-y-4 shadow-sm">
           <RefreshCw className="w-10 h-10 text-indigo-600 animate-spin mx-auto" />
-          <p className="text-sm font-bold text-slate-900">Memuat Katalog Layanan Atlantic H2H...</p>
-          <p className="text-xs text-slate-500">Menghubungkan ke gateway resmi dan menyinkronkan daftar harga realtime.</p>
+          <p className="text-sm font-bold text-slate-900">Memuat Katalog Layanan...</p>
+          <p className="text-xs text-slate-500">Menyinkronkan daftar produk dan harga resmi realtime.</p>
         </div>
       ) : groupedByProvider.size === 0 ? (
         <div className="text-center py-16 bg-white border border-slate-200 rounded-3xl p-8 space-y-3 shadow-sm">
@@ -392,7 +649,7 @@ export const ProductCatalog: React.FC<ProductCatalogProps> = ({
           <p className="text-xs text-slate-500 max-w-md mx-auto">
             {searchQuery || selectedBrand !== 'All'
               ? 'Coba kata kunci pencarian lain atau klik "Semua" pada filter provider.'
-              : 'Katalog layanan sedang diperbarui langsung dari Atlantic Gateway.'}
+              : 'Katalog layanan sedang diperbarui dan disiapkan.'}
           </p>
           <button
             onClick={onRefreshProducts}
@@ -407,13 +664,24 @@ export const ProductCatalog: React.FC<ProductCatalogProps> = ({
           {Array.from(groupedByProvider.entries()).map(([provider, items]) => (
             <div key={provider} className="space-y-4">
               {/* Provider Header Banner */}
-              <div className="flex items-center justify-between border-b border-slate-200 pb-2">
-                <div className="flex items-center gap-2.5">
-                  <div className="w-3 h-3 rounded-full bg-gradient-to-r from-cyan-500 to-indigo-600 shadow-sm"></div>
-                  <h3 className="text-base font-black text-slate-900 tracking-tight">{provider}</h3>
-                  <span className="text-[11px] px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-600 border border-slate-200 font-mono font-bold">
-                    {items.length} Pilihan
-                  </span>
+              <div className="flex items-center justify-between border-b border-slate-200 pb-2.5">
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-xl bg-slate-100 border border-slate-200 overflow-hidden flex items-center justify-center p-1 shadow-xs shrink-0">
+                    <img
+                      src={getProductThumbnail(items[0])}
+                      alt={provider}
+                      referrerPolicy="no-referrer"
+                      className="w-full h-full object-contain rounded-lg"
+                    />
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <h3 className="text-base font-black text-slate-900 tracking-tight">{provider}</h3>
+                      <span className="text-[11px] px-2.5 py-0.5 rounded-full bg-slate-100 text-slate-600 border border-slate-200 font-mono font-bold">
+                        {items.length} Layanan
+                      </span>
+                    </div>
+                  </div>
                 </div>
                 <div className="flex items-center gap-1 text-[11px] text-emerald-600 font-bold">
                   <CheckCircle className="w-3.5 h-3.5" />
@@ -421,46 +689,70 @@ export const ProductCatalog: React.FC<ProductCatalogProps> = ({
                 </div>
               </div>
 
-              {/* Items Card Grid */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+              {/* Items Card Grid - Flexible & Roomy on HP, Tablet & PC */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3.5 sm:gap-4.5">
                 {items.slice(0, 100).map((item) => {
                   const priceToDisplay = item.sellPrice || item.price;
                   const isAvailable = item.status === 'available';
+                  const itemImg = getProductThumbnail(item);
 
                   return (
                     <div
                       key={item.code}
                       id={`product-card-${item.code}`}
                       onClick={() => onSelectProduct(item)}
-                      className="group relative bg-white hover:bg-slate-50/80 border border-slate-200 hover:border-indigo-400 rounded-2xl p-4 transition-all duration-200 hover:-translate-y-1 hover:shadow-xl hover:shadow-indigo-500/10 cursor-pointer flex flex-col justify-between shadow-sm"
+                      className="group relative bg-white hover:bg-slate-50/90 border border-slate-200/90 hover:border-indigo-400 rounded-2xl sm:rounded-3xl p-3.5 sm:p-4.5 transition-all duration-200 hover:-translate-y-1 hover:shadow-xl hover:shadow-indigo-500/10 cursor-pointer flex flex-col justify-between shadow-xs"
                     >
                       <div>
                         {/* Top tag & Code */}
-                        <div className="flex items-center justify-between gap-2 mb-2">
-                          <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-indigo-50 border border-indigo-100 text-indigo-700 font-mono">
-                            {item.code}
-                          </span>
+                        <div className="flex items-center justify-between gap-2 mb-2.5">
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-indigo-50 border border-indigo-100/90 text-indigo-700 font-mono">
+                              {item.code}
+                            </span>
+                            {isRecommendedProduct(item) && (
+                              <span className="text-[9px] font-black px-1.5 py-0.5 rounded-md bg-amber-500 text-white shadow-xs">
+                                ⭐ Rekomendasi
+                              </span>
+                            )}
+                          </div>
                           {isAvailable ? (
-                            <span className="text-[10px] text-emerald-600 font-extrabold flex items-center gap-1">
+                            <span className="text-[10px] text-emerald-600 font-extrabold flex items-center gap-1 shrink-0">
                               <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
                               Tersedia
                             </span>
                           ) : (
-                            <span className="text-[10px] text-rose-600 font-extrabold flex items-center gap-1">
+                            <span className="text-[10px] text-rose-600 font-extrabold flex items-center gap-1 shrink-0">
                               <span className="w-1.5 h-1.5 rounded-full bg-rose-500"></span>
                               Gangguan
                             </span>
                           )}
                         </div>
 
-                        {/* Title */}
-                        <h4 className="text-xs font-black text-slate-900 group-hover:text-indigo-600 transition-colors line-clamp-2 mb-1">
-                          {item.name}
-                        </h4>
+                        {/* Visual Thumbnail & Title */}
+                        <div className="flex items-start gap-3 mb-2.5">
+                          <div className="w-11 h-11 sm:w-12 sm:h-12 rounded-xl sm:rounded-2xl bg-slate-100 border border-slate-200/80 overflow-hidden shrink-0 flex items-center justify-center p-1 group-hover:scale-105 group-hover:border-indigo-300 transition-all shadow-xs">
+                            <img
+                              src={itemImg}
+                              alt={item.name}
+                              referrerPolicy="no-referrer"
+                              className="w-full h-full object-contain rounded-lg sm:rounded-xl"
+                              onError={(e) => {
+                                (e.target as HTMLImageElement).src = 'https://images.unsplash.com/photo-1542751371-adc38448a05e?w=200&auto=format&fit=crop&q=80';
+                              }}
+                            />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <h4 className="text-xs sm:text-sm font-black text-slate-900 group-hover:text-indigo-600 transition-colors line-clamp-2 leading-snug">
+                              {item.name}
+                            </h4>
+                            <span className="text-[10px] text-slate-400 font-medium line-clamp-1">{item.provider}</span>
+                          </div>
+                        </div>
 
                         {/* Note / Subtext */}
                         {item.note && (
-                          <p className="text-[10px] text-slate-500 line-clamp-2 mb-2 font-medium">
+                          <p className="text-[10px] sm:text-[11px] text-slate-500 line-clamp-2 mb-2 font-medium bg-slate-50 p-2 rounded-xl border border-slate-100">
                             {item.note}
                           </p>
                         )}
@@ -470,12 +762,12 @@ export const ProductCatalog: React.FC<ProductCatalogProps> = ({
                       <div className="pt-3 border-t border-slate-100 flex items-center justify-between mt-2">
                         <div>
                           <p className="text-[10px] text-slate-400 font-semibold">Harga Member</p>
-                          <p className="text-sm font-black text-slate-900 tracking-tight font-mono">
+                          <p className="text-sm sm:text-base font-black text-slate-900 tracking-tight font-mono">
                             Rp {Number(priceToDisplay || 0).toLocaleString('id-ID')}
                           </p>
                         </div>
 
-                        <span className="px-3 py-1.5 rounded-xl bg-gradient-to-r from-cyan-600 to-indigo-600 group-hover:from-cyan-500 group-hover:to-indigo-500 text-white text-[11px] font-black transition-all shadow-sm">
+                        <span className="px-3.5 py-1.5 sm:px-4 sm:py-2 rounded-xl bg-gradient-to-r from-cyan-600 to-indigo-600 group-hover:from-cyan-500 group-hover:to-indigo-500 text-white text-[11px] sm:text-xs font-black transition-all shadow-xs">
                           Pesan
                         </span>
                       </div>

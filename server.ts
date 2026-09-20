@@ -60,6 +60,7 @@ import {
   getTransferRecordByIdOrRef,
   getAllTransferRecords,
   updateUserProfile,
+  getTopLeaderboard,
 } from './server/db.js';
 import type { TransactionRecord, DepositOrder, ProductItem } from './src/types.js';
 
@@ -413,7 +414,29 @@ app.post('/api/order/create', optionalAuth, async (req, res) => {
       return res.status(404).json({ status: false, message: 'Layanan produk tidak ditemukan atau sudah nonaktif.' });
     }
 
-    const finalTarget = zone ? `${target.trim()} (${zone.trim()})` : target.trim();
+    // Format target cleanly for Atlantic Gateway vs User Display
+    const rawTarget = String(target || '').trim();
+    const rawZone = zone ? String(zone).trim() : '';
+    
+    // Comprehensive Target Sanitization for Atlantic Gateway:
+    // 1. If zone is provided separately (e.g. MLBB target="12345678", zone="2045") -> "123456782045"
+    // 2. If user pasted combined target like "12345678 (2045)" or "12345678/2045" -> strip punctuation -> "123456782045"
+    // 3. For PLN / Pulsa / E-Wallet -> strip non-digits or spaces
+    let gatewayTarget = rawTarget;
+    if (rawZone) {
+      const cleanT = rawTarget.replace(/[^a-zA-Z0-9]/g, '');
+      const cleanZ = rawZone.replace(/[^a-zA-Z0-9]/g, '');
+      gatewayTarget = `${cleanT}${cleanZ}`;
+    } else if (rawTarget.includes('(') && rawTarget.includes(')')) {
+      gatewayTarget = rawTarget.replace(/[^a-zA-Z0-9]/g, '');
+    } else if (rawTarget.includes('/') || rawTarget.includes('-') || rawTarget.includes(' ')) {
+      // If pulsa or game has spaces/hyphens like 0812-3456-7890
+      gatewayTarget = rawTarget.replace(/[^a-zA-Z0-9]/g, '');
+    }
+
+    const displayTarget = rawZone
+      ? `${rawTarget} (${rawZone})`
+      : rawTarget;
     const reffId = `IBAD-${Date.now().toString(36).toUpperCase()}-${crypto.randomBytes(3).toString('hex').toUpperCase()}`;
     const cost = product.sellPrice || product.price;
 
@@ -437,26 +460,70 @@ app.post('/api/order/create', optionalAuth, async (req, res) => {
         });
       }
 
-      // Deduct balance in MongoDB
+      // Deduct balance in MongoDB first
       await updateUserBalance(authUser.id, -cost);
     }
 
     // Call Atlantic Gateway API for real processing
+    console.log(`[Order Processing] Sending to Atlantic H2H: code=${product.code}, reff_id=${reffId}, target=${gatewayTarget}`);
     const gatewayRes = await createTransaction({
       code: product.code,
       reff_id: reffId,
-      target: finalTarget,
-      limit_price: product.price + 1500,
+      target: gatewayTarget,
     });
 
+    console.log('[Order Gateway Response Result]:', gatewayRes);
+
+    // If Atlantic rejected or failed the request
+    if (!gatewayRes || gatewayRes.status === false || gatewayRes.status === 'false') {
+      // Revert / Refund balance to user immediately if paid with saldo
+      if (payment_method === 'saldo' && authUser) {
+        await updateUserBalance(authUser.id, cost);
+        console.log(`[Order Refund] Refunded Rp ${cost} to user ${authUser.username} due to Atlantic rejection.`);
+      }
+
+      const failMessage = gatewayRes?.message || 'Permintaan pesanan ditolak oleh gateway Atlantic H2H provider.';
+      
+      // Save record as failed with reason
+      const failedTransaction: TransactionRecord = {
+        id: reffId,
+        reff_id: reffId,
+        userId: authUser ? authUser.id : undefined,
+        userEmail: authUser ? authUser.email : undefined,
+        customer_name: authUser ? authUser.name : undefined,
+        layanan: product.name,
+        code: product.code,
+        target: displayTarget,
+        price: cost,
+        sn: failMessage,
+        status: 'failed',
+        created_at: new Date().toISOString(),
+        payment_method: payment_method || 'direct',
+        type: 'prabayar',
+      };
+      await saveTransaction(failedTransaction);
+
+      return res.status(400).json({
+        status: false,
+        message: failMessage,
+        data: failedTransaction,
+      });
+    }
+
+    // Gateway accepted transaction
     let initialStatus: TransactionRecord['status'] = 'pending';
     let txId = reffId;
     let sn: string | null = null;
 
-    if (gatewayRes && gatewayRes.status && gatewayRes.data) {
+    if (gatewayRes && gatewayRes.data) {
       txId = gatewayRes.data.id || reffId;
-      initialStatus = gatewayRes.data.status === 'success' ? 'success' : gatewayRes.data.status === 'failed' ? 'failed' : 'pending';
-      sn = gatewayRes.data.sn || null;
+      initialStatus =
+        gatewayRes.data.status === 'success'
+          ? 'success'
+          : gatewayRes.data.status === 'failed'
+          ? 'failed'
+          : 'pending';
+      sn = gatewayRes.data.sn || gatewayRes.data.message || null;
     }
 
     // Save in MongoDB
@@ -468,7 +535,7 @@ app.post('/api/order/create', optionalAuth, async (req, res) => {
       customer_name: authUser ? authUser.name : undefined,
       layanan: product.name,
       code: product.code,
-      target: finalTarget,
+      target: displayTarget,
       price: cost,
       sn,
       status: initialStatus,
@@ -481,7 +548,7 @@ app.post('/api/order/create', optionalAuth, async (req, res) => {
 
     return res.json({
       status: true,
-      message: 'Pesanan berhasil dikirim ke gateway Atlantic H2H!',
+      message: 'Pesanan berhasil dikirim & diproses oleh Atlantic H2H Gateway!',
       data: transaction,
     });
   } catch (err) {
@@ -489,7 +556,7 @@ app.post('/api/order/create', optionalAuth, async (req, res) => {
   }
 });
 
-// Check Transaction Status by Invoice / Reff ID / Target
+// Check Transaction Status by Invoice / Reff ID / Target (with live Atlantic sync)
 app.get('/api/order/check/:query', async (req, res) => {
   try {
     const { query } = req.params;
@@ -503,7 +570,10 @@ app.get('/api/order/check/:query', async (req, res) => {
     // If still pending, query live gateway for real update
     if (localTx.status === 'pending') {
       try {
-        const liveStatus = await getTransactionStatus(localTx.id, localTx.type || 'prabayar');
+        const queryId = localTx.id || localTx.reff_id;
+        const liveStatus = await getTransactionStatus(queryId, localTx.type || 'prabayar');
+        console.log(`[Status Query for ${queryId}]:`, liveStatus);
+        
         if (liveStatus && liveStatus.status && liveStatus.data) {
           const newStatus =
             liveStatus.data.status === 'success' ? 'success' : liveStatus.data.status === 'failed' ? 'failed' : 'pending';
@@ -522,6 +592,21 @@ app.get('/api/order/check/:query', async (req, res) => {
     });
   } catch (err) {
     return maskErrorResponse(res, err, 'Gagal memeriksa status pesanan.');
+  }
+});
+
+// Top Leaderboard Endpoint
+app.get('/api/leaderboard', async (req, res) => {
+  try {
+    const period = (req.query.period as any) || 'all';
+    const leaders = await getTopLeaderboard(period);
+    return res.json({
+      status: true,
+      data: leaders,
+      timestamp: new Date().toISOString(),
+    });
+  } catch (err) {
+    return maskErrorResponse(res, err, 'Gagal memuat data leaderboard.');
   }
 });
 
@@ -950,6 +1035,89 @@ app.post('/api/admin/transaction/update-status', adminMiddleware, async (req, re
     return res.json({ status: true, message: `Status transaksi ${id} berhasil diubah menjadi ${status}.` });
   } catch (err) {
     return maskErrorResponse(res, err, 'Gagal memperbarui status transaksi.');
+  }
+});
+
+// Admin Recheck Live Status directly from Atlantic H2H
+app.post('/api/admin/transaction/recheck-h2h', adminMiddleware, async (req, res) => {
+  try {
+    const { id } = req.body;
+    if (!id) return res.status(400).json({ status: false, message: 'ID transaksi wajib diisi.' });
+
+    const tx = await getTransactionByReffOrId(id);
+    if (!tx) return res.status(404).json({ status: false, message: 'Transaksi tidak ditemukan di database.' });
+
+    const queryId = tx.id || tx.reff_id;
+    const liveStatus = await getTransactionStatus(queryId, tx.type || 'prabayar');
+
+    if (liveStatus && liveStatus.status && liveStatus.data) {
+      const newStatus =
+        liveStatus.data.status === 'success' ? 'success' : liveStatus.data.status === 'failed' ? 'failed' : 'pending';
+      await updateTransactionStatus(tx.reff_id, newStatus, liveStatus.data.sn);
+      tx.status = newStatus;
+      if (liveStatus.data.sn) tx.sn = liveStatus.data.sn;
+
+      return res.json({
+        status: true,
+        message: `Status terverifikasi dari Atlantic: ${newStatus.toUpperCase()}`,
+        gatewayData: liveStatus.data,
+        data: tx,
+      });
+    }
+
+    return res.json({
+      status: false,
+      message: liveStatus?.message || 'Gateway Atlantic tidak menemukan transaksi dengan ID ini.',
+      rawGateway: liveStatus,
+    });
+  } catch (err) {
+    return maskErrorResponse(res, err, 'Gagal mengecek status ke Atlantic H2H.');
+  }
+});
+
+// Admin Resend / Re-push Order to Atlantic H2H
+app.post('/api/admin/transaction/resend-h2h', adminMiddleware, async (req, res) => {
+  try {
+    const { id } = req.body;
+    if (!id) return res.status(400).json({ status: false, message: 'ID transaksi wajib diisi.' });
+
+    const tx = await getTransactionByReffOrId(id);
+    if (!tx) return res.status(404).json({ status: false, message: 'Transaksi tidak ditemukan.' });
+
+    const rawTarget = tx.target || '';
+    const cleanTarget = rawTarget.replace(/[^a-zA-Z0-9]/g, '');
+
+    const gatewayRes = await createTransaction({
+      code: tx.code,
+      reff_id: tx.reff_id,
+      target: cleanTarget,
+    });
+
+    if (gatewayRes && gatewayRes.status && gatewayRes.data) {
+      const newStatus = gatewayRes.data.status === 'success' ? 'success' : gatewayRes.data.status === 'failed' ? 'failed' : 'pending';
+      await updateTransactionStatus(tx.reff_id, newStatus, gatewayRes.data.sn);
+      if (gatewayRes.data.id) {
+        tx.id = gatewayRes.data.id;
+      }
+      tx.status = newStatus;
+      if (gatewayRes.data.sn) tx.sn = gatewayRes.data.sn;
+      await saveTransaction(tx);
+
+      return res.json({
+        status: true,
+        message: 'Pesanan berhasil dikirim ulang ke gateway Atlantic H2H!',
+        data: tx,
+        gatewayData: gatewayRes.data,
+      });
+    }
+
+    return res.status(400).json({
+      status: false,
+      message: gatewayRes?.message || 'Pengiriman ulang ke Atlantic H2H gagal.',
+      rawGateway: gatewayRes,
+    });
+  } catch (err) {
+    return maskErrorResponse(res, err, 'Gagal mengirim ulang transaksi.');
   }
 });
 

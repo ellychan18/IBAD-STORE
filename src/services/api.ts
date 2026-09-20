@@ -7,6 +7,7 @@ import type {
   DepositMethod,
   PostpaidInquiryResult,
   SecurityAuditLog,
+  LeaderboardEntry,
 } from '../types.js';
 
 const TOKEN_KEY = 'ibad_auth_token';
@@ -160,6 +161,9 @@ export const api = {
       body: JSON.stringify({ id }),
     }),
 
+  // Leaderboard
+  getLeaderboard: (period: string = 'all') => request<LeaderboardEntry[]>(`/api/leaderboard?period=${period}`),
+
   // Public Security & Audit
   getSecurityStats: () => request<any>('/api/security/stats'),
   getSecurityLogs: () => request<SecurityAuditLog[]>('/api/security/logs'),
@@ -176,6 +180,16 @@ export const api = {
     request('/api/admin/transaction/update-status', {
       method: 'POST',
       body: JSON.stringify(payload),
+    }),
+  adminRecheckTransactionH2H: (id: string) =>
+    request('/api/admin/transaction/recheck-h2h', {
+      method: 'POST',
+      body: JSON.stringify({ id }),
+    }),
+  adminResendTransactionH2H: (id: string) =>
+    request('/api/admin/transaction/resend-h2h', {
+      method: 'POST',
+      body: JSON.stringify({ id }),
     }),
   getAdminUsers: () => request<User[]>('/api/admin/users'),
   updateAdminUserBalance: (payload: { userId: string; newBalance: number; reason?: string }) =>

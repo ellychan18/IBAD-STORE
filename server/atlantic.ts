@@ -18,8 +18,37 @@ let lastVerifiedProfile: any = {
   status: 'active',
 };
 
+// Response cache map with TTL to avoid rate-limiting & Cloudflare 520 floods
+const apiCache = new Map<string, { timestamp: number; ttl: number; data: any }>();
+
+function getCachedData(key: string): any | null {
+  const cached = apiCache.get(key);
+  if (cached && Date.now() - cached.timestamp < cached.ttl) {
+    return cached.data;
+  }
+  return null;
+}
+
+function setCachedData(key: string, data: any, ttlMs: number) {
+  apiCache.set(key, { timestamp: Date.now(), ttl: ttlMs, data });
+}
+
 // Helper to make URL-encoded POST requests to Atlantic Gateway with retry & 520 protection
-async function callAtlanticApi(endpoint: string, params: Record<string, string | number>, retries = 2): Promise<any> {
+async function callAtlanticApi(
+  endpoint: string,
+  params: Record<string, string | number>,
+  options: { retries?: number; cacheTtlMs?: number; skipCache?: boolean } = {}
+): Promise<any> {
+  const { retries = 1, cacheTtlMs = 0, skipCache = false } = options;
+  const cacheKey = `${endpoint}:${JSON.stringify(params)}`;
+
+  if (!skipCache && cacheTtlMs > 0) {
+    const cached = getCachedData(cacheKey);
+    if (cached) {
+      return cached;
+    }
+  }
+
   const url = `${ATLANTIC_GATEWAY_URL}${endpoint}`;
   const formData = new URLSearchParams();
   
@@ -37,14 +66,15 @@ async function callAtlanticApi(endpoint: string, params: Record<string, string |
   for (let attempt = 0; attempt <= retries; attempt++) {
     try {
       const controller = new AbortController();
-      const timeout = setTimeout(() => controller.abort(), 12000);
+      const timeout = setTimeout(() => controller.abort(), 10000);
 
       const response = await fetch(url, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/x-www-form-urlencoded',
           'Accept': 'application/json, text/plain, */*',
-          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+          'Cache-Control': 'no-cache',
         },
         body: serializedBody,
         signal: controller.signal,
@@ -52,21 +82,44 @@ async function callAtlanticApi(endpoint: string, params: Record<string, string |
 
       clearTimeout(timeout);
 
-      const text = await response.text();
-      let json: any;
-      try {
-        json = JSON.parse(text);
-      } catch {
-        // If Cloudflare 520 or HTML returned, retry if attempts remain
+      // If Cloudflare returns 5xx (e.g., 520 Unknown Origin Error, 502, 504)
+      if (response.status >= 500) {
         if (attempt < retries) {
           await new Promise((r) => setTimeout(r, 600 * (attempt + 1)));
           continue;
         }
-        console.warn(`[Atlantic API Non-JSON/520 Response from ${endpoint}]:`, text.slice(0, 180));
-        return { status: false, message: 'Respon gateway provider sementara 520 (origin busy)', raw: text };
+        const errorBody = await response.text().catch(() => '');
+        console.error(`[Atlantic Gateway HTTP ${response.status}] Endpoint: ${endpoint}, Body: ${errorBody.slice(0, 300)}`);
+        return {
+          status: false,
+          http_status: response.status,
+          message: `Gateway provider merespon HTTP ${response.status} (Cloudflare/Origin error). Silakan coba sesaat lagi.`,
+          raw_response: errorBody.slice(0, 200),
+        };
       }
 
-      // Check if Cloudflare 520 JSON object was returned
+      const text = await response.text();
+
+      let json: any;
+      try {
+        json = JSON.parse(text);
+      } catch {
+        // If Cloudflare 520 HTML or plain text error was returned
+        if (attempt < retries) {
+          await new Promise((r) => setTimeout(r, 600 * (attempt + 1)));
+          continue;
+        }
+        console.error(`[Atlantic Gateway Non-JSON] Endpoint: ${endpoint}, Response: ${text.slice(0, 300)}`);
+        return {
+          status: false,
+          message: text.includes('Cloudflare') 
+            ? 'Gateway provider terhalang proteksi Cloudflare upstream. Pastikan IP server di-whitelist.' 
+            : `Respon gateway: ${text.slice(0, 150) || 'Format respon tidak valid'}`,
+          raw_text: text.slice(0, 200),
+        };
+      }
+
+      // Check if Cloudflare 520 or origin error JSON structure was returned
       if (json && (json.status === 520 || json.error_code === 520 || json.error_name === 'unknown_origin_error')) {
         if (attempt < retries) {
           await new Promise((r) => setTimeout(r, 600 * (attempt + 1)));
@@ -74,11 +127,18 @@ async function callAtlanticApi(endpoint: string, params: Record<string, string |
         }
         return {
           status: false,
-          cloudflare_error: true,
-          error_code: 520,
-          message: 'Server origin Atlantic sedang sibuk/merespon 520 (Cloudflare Origin Busy). Menggunakan data cache terakhir.',
-          raw: json,
+          message: `Gateway provider mengembalikan error 520: ${json.message || 'Unknown Origin Error'}`,
         };
+      }
+
+      // If gateway returns status false, log detail
+      if (json && (json.status === false || json.status === 'false')) {
+        console.warn(`[Atlantic Gateway Rejected] Endpoint: ${endpoint}, Msg: ${json.message}, Data:`, json.data);
+      }
+
+      // Store in cache if TTL is defined and call succeeded
+      if (cacheTtlMs > 0 && json && (json.status === true || json.status === 'true')) {
+        setCachedData(cacheKey, json, cacheTtlMs);
       }
 
       return json;
@@ -87,15 +147,18 @@ async function callAtlanticApi(endpoint: string, params: Record<string, string |
         await new Promise((r) => setTimeout(r, 600 * (attempt + 1)));
         continue;
       }
-      console.error(`[Atlantic API Gateway Error ${endpoint}]:`, err.message);
-      return { status: false, message: 'Gagal terhubung ke gateway provider', error: err.message };
+      console.error(`[Atlantic Gateway Connection Exception] Endpoint: ${endpoint}, Error:`, err);
+      return {
+        status: false,
+        message: 'Koneksi ke gateway provider gagal: ' + (err.name === 'AbortError' ? 'Koneksi Timeout (10s)' : err.message),
+      };
     }
   }
 }
 
 // 1. Fetch Price List (Prabayar & Pascabayar)
 export async function getPriceList(type: 'prabayar' | 'pascabayar' = 'prabayar'): Promise<any> {
-  const res = await callAtlanticApi('/layanan/price_list', { type });
+  const res = await callAtlanticApi('/layanan/price_list', { type }, { cacheTtlMs: 30000 });
   return res;
 }
 
@@ -157,7 +220,7 @@ export async function getDepositMethods(type?: string, method?: string): Promise
   const params: Record<string, string> = {};
   if (type) params.type = type;
   if (method) params.method = method;
-  const res = await callAtlanticApi('/deposit/metode', params);
+  const res = await callAtlanticApi('/deposit/metode', params, { cacheTtlMs: 60000 });
   return res;
 }
 
@@ -191,7 +254,7 @@ export async function getDepositStatus(id: string): Promise<any> {
 
 // 10. Check Atlantic Account Profile & Live Balance (POST /get_profile)
 export async function getAtlanticProfile(): Promise<any> {
-  const res = await callAtlanticApi('/get_profile', {});
+  const res = await callAtlanticApi('/get_profile', {}, { cacheTtlMs: 15000 });
   if (res && (res.status === true || res.status === 'true') && res.data) {
     lastVerifiedProfile = {
       ...lastVerifiedProfile,
@@ -214,7 +277,7 @@ export async function getAtlanticProfile(): Promise<any> {
 
 // 11. Get Bank & E-Wallet List (POST /transfer/bank_list)
 export async function getBankList(): Promise<any> {
-  const res = await callAtlanticApi('/transfer/bank_list', {});
+  const res = await callAtlanticApi('/transfer/bank_list', {}, { cacheTtlMs: 300000 });
   return res;
 }
 

@@ -123,3 +123,15 @@ export interface ApiResponse<T = any> {
   code?: number;
   incidentId?: string;
 }
+
+export interface LeaderboardEntry {
+  rank: number;
+  name: string;
+  maskedUsername: string;
+  totalSpent: number;
+  totalOrders: number;
+  badge: string;
+  avatar: string;
+  favoriteService: string;
+}
+

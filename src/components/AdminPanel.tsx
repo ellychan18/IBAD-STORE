@@ -192,6 +192,46 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ adminUser, onRefreshData
     }
   };
 
+  const handleRecheckH2H = async (id: string) => {
+    try {
+      showToast('Sedang mengecek status ke Atlantic H2H Gateway...');
+      const res = await api.adminRecheckTransactionH2H(id);
+      showToast(res.message || 'Pengecekan Atlantic H2H selesai.');
+      const tRes = await api.getAdminTransactions();
+      if (tRes.status && Array.isArray(tRes.data)) setTransactions(tRes.data);
+      if (selectedTxForEdit) {
+        const updated = (tRes.data || []).find((x: any) => x.id === id || x.reff_id === id);
+        if (updated) {
+          setSelectedTxForEdit(updated);
+          setEditTxStatus(updated.status);
+          setEditTxSn(updated.sn || '');
+        }
+      }
+    } catch (e: any) {
+      showToast('Gagal recheck H2H: ' + e.message);
+    }
+  };
+
+  const handleResendH2H = async (id: string) => {
+    try {
+      showToast('Mengirim ulang transaksi ke Atlantic Gateway...');
+      const res = await api.adminResendTransactionH2H(id);
+      showToast(res.message || 'Pengiriman ulang diproses.');
+      const tRes = await api.getAdminTransactions();
+      if (tRes.status && Array.isArray(tRes.data)) setTransactions(tRes.data);
+      if (selectedTxForEdit) {
+        const updated = (tRes.data || []).find((x: any) => x.id === id || x.reff_id === id);
+        if (updated) {
+          setSelectedTxForEdit(updated);
+          setEditTxStatus(updated.status);
+          setEditTxSn(updated.sn || '');
+        }
+      }
+    } catch (e: any) {
+      showToast('Gagal resend H2H: ' + e.message);
+    }
+  };
+
   const handleClearTransactions = async () => {
     try {
       const res = await api.clearAdminTransactions();
@@ -614,7 +654,27 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ adminUser, onRefreshData
                         </span>
                       </td>
 
-                      <td className="px-4 py-3.5 text-right">
+                      <td className="px-4 py-3.5 text-right space-x-1.5 whitespace-nowrap">
+                        <button
+                          id={`admin-btn-sync-tx-${tx.reff_id || tx.id}`}
+                          onClick={() => handleRecheckH2H(tx.id || tx.reff_id)}
+                          className="px-2.5 py-1 bg-amber-50 hover:bg-amber-100 text-amber-800 rounded-lg text-[11px] font-bold border border-amber-200 cursor-pointer transition-all inline-flex items-center gap-1"
+                          title="Sinkronkan status transaksi langsung dari Atlantic H2H Gateway"
+                        >
+                          <RefreshCw className="w-3 h-3" />
+                          <span>Sync H2H</span>
+                        </button>
+
+                        <button
+                          id={`admin-btn-resend-tx-${tx.reff_id || tx.id}`}
+                          onClick={() => handleResendH2H(tx.id || tx.reff_id)}
+                          className="px-2.5 py-1 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 rounded-lg text-[11px] font-bold border border-indigo-200 cursor-pointer transition-all inline-flex items-center gap-1"
+                          title="Tembak / Kirim ulang transaksi ke Atlantic H2H Gateway"
+                        >
+                          <Zap className="w-3 h-3 text-indigo-600" />
+                          <span>Kirim Gateway</span>
+                        </button>
+
                         <button
                           id={`admin-btn-edit-tx-${tx.reff_id}`}
                           onClick={() => {
@@ -622,7 +682,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ adminUser, onRefreshData
                             setEditTxStatus(tx.status);
                             setEditTxSn(tx.sn || '');
                           }}
-                          className="px-2.5 py-1 bg-slate-100 hover:bg-slate-200 text-indigo-700 rounded-lg text-xs font-bold border border-slate-200 cursor-pointer transition-all"
+                          className="px-2.5 py-1 bg-slate-100 hover:bg-slate-200 text-slate-800 rounded-lg text-[11px] font-bold border border-slate-200 cursor-pointer transition-all"
                         >
                           Ubah
                         </button>
@@ -1072,6 +1132,32 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ adminUser, onRefreshData
                 className="w-full bg-slate-50 border border-slate-300 rounded-xl px-4 py-2.5 text-xs text-slate-900 font-mono focus:outline-none focus:border-indigo-500 focus:bg-white"
                 placeholder="Contoh: 1234-5678-9012-3456"
               />
+            </div>
+
+            {/* Direct H2H Recovery Actions */}
+            <div className="p-3 bg-amber-50/70 border border-amber-200 rounded-2xl space-y-2">
+              <p className="text-[11px] font-bold text-amber-900 flex items-center gap-1.5">
+                <Zap className="w-3.5 h-3.5 text-amber-600" />
+                Gateway Atlantic Tools:
+              </p>
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => handleRecheckH2H(selectedTxForEdit.id || selectedTxForEdit.reff_id)}
+                  className="px-3 py-2 bg-white hover:bg-amber-100 text-amber-900 border border-amber-300 rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center justify-center gap-1.5 shadow-xs"
+                >
+                  <RefreshCw className="w-3.5 h-3.5" />
+                  <span>Sync dari Gateway</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleResendH2H(selectedTxForEdit.id || selectedTxForEdit.reff_id)}
+                  className="px-3 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold transition-all cursor-pointer flex items-center justify-center gap-1.5 shadow-sm"
+                >
+                  <Zap className="w-3.5 h-3.5 text-amber-300" />
+                  <span>Tembak ke Gateway</span>
+                </button>
+              </div>
             </div>
 
             <div className="flex items-center justify-end gap-2 pt-2">

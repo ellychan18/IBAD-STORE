@@ -41,6 +41,7 @@ export const OrderForm: React.FC<OrderFormProps> = ({
   const [pin, setPin] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [orderDenomSort, setOrderDenomSort] = useState<'all' | 'rekomendasi' | 'termurah' | 'termahal'>('rekomendasi');
 
   useEffect(() => {
     setSelectedProduct(product);
@@ -48,10 +49,35 @@ export const OrderForm: React.FC<OrderFormProps> = ({
 
   if (!selectedProduct) return null;
 
+  // Helper to determine if item is recommended
+  const isOrderRecommended = (p: ProductItem): boolean => {
+    const name = (p.name || '').toLowerCase();
+    if (name.includes('weekly pass') || name.includes('twilight') || name.includes('starlight')) return true;
+    if (name.includes('86 diamond') || name.includes('172 diamond') || name.includes('257 diamond') || name.includes('706 diamond')) return true;
+    if (name.includes('140 diamond') || name.includes('355 diamond') || name.includes('720 diamond') || name.includes('membership')) return true;
+    if (name.includes('token pln 20.000') || name.includes('token pln 50.000') || name.includes('token pln 100.000')) return true;
+    if (name.includes('5.000') || name.includes('10.000') || name.includes('25.000') || name.includes('50.000') || name.includes('100.000')) return true;
+    if (name.includes('flash') || name.includes('promo') || name.includes('terlaris') || name.includes('hemat')) return true;
+    return false;
+  };
+
   // Filter sibling products from same provider
   const siblingProducts = allProducts.filter(
     (p) => p.provider === selectedProduct.provider && !p.isPostpaid
   );
+
+  // Sorted/Filtered sibling products
+  let sortedSiblingProducts = [...siblingProducts];
+  if (orderDenomSort === 'rekomendasi') {
+    const recs = siblingProducts.filter((p) => isOrderRecommended(p));
+    if (recs.length > 0) {
+      sortedSiblingProducts = recs;
+    }
+  } else if (orderDenomSort === 'termurah') {
+    sortedSiblingProducts.sort((a, b) => (a.sellPrice || a.price) - (b.sellPrice || b.price));
+  } else if (orderDenomSort === 'termahal') {
+    sortedSiblingProducts.sort((a, b) => (b.sellPrice || b.price) - (a.sellPrice || a.price));
+  }
 
   const price = selectedProduct.sellPrice || selectedProduct.price;
   const prodCategory = String(selectedProduct.category || '').toLowerCase();
@@ -178,13 +204,27 @@ export const OrderForm: React.FC<OrderFormProps> = ({
                   type="text"
                   placeholder={
                     isPln
-                      ? 'Contoh: 14238910291'
+                      ? 'Contoh: 14238910291 (No. Meter/ID PLN)'
                       : isPulsa
                       ? 'Contoh: 081234567890'
-                      : 'Masukkan User ID (Contoh: 12345678)'
+                      : isGameWithZone
+                      ? 'User ID (Contoh: 12345678)'
+                      : 'Masukkan User ID / Nomor Tujuan'
                   }
                   value={targetId}
-                  onChange={(e) => setTargetId(e.target.value)}
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    // Auto-parse zone if user pastes format like "12345678 (2045)" or "12345678 2045"
+                    if (isGameWithZone) {
+                      const match = val.match(/^(\d{4,12})\s*[\(\/\s]\s*(\d{3,6})\s*\)?$/);
+                      if (match) {
+                        setTargetId(match[1]);
+                        setZoneId(match[2]);
+                        return;
+                      }
+                    }
+                    setTargetId(val);
+                  }}
                   className="w-full px-4 py-2.5 bg-white border border-slate-300 focus:border-indigo-500 rounded-xl text-xs text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-indigo-500 font-mono font-bold shadow-sm"
                 />
               </div>
@@ -213,32 +253,90 @@ export const OrderForm: React.FC<OrderFormProps> = ({
 
           {/* STEP 2: Denomination Picker */}
           <div className="space-y-3 bg-slate-50/80 p-4 rounded-2xl border border-slate-200">
-            <label className="font-extrabold text-slate-900 flex items-center gap-1.5">
-              <span className="w-5 h-5 rounded-full bg-indigo-600 text-white flex items-center justify-center text-[10px] font-black">2</span>
-              <span>Pilih Nominal / Paket</span>
-            </label>
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+              <label className="font-extrabold text-slate-900 flex items-center gap-1.5">
+                <span className="w-5 h-5 rounded-full bg-indigo-600 text-white flex items-center justify-center text-[10px] font-black">2</span>
+                <span>Pilih Nominal / Paket</span>
+              </label>
+
+              {/* Quick Sort Options */}
+              <div className="flex items-center gap-1 bg-white p-1 rounded-xl border border-slate-200 text-[10px] font-bold">
+                <button
+                  type="button"
+                  onClick={() => setOrderDenomSort('rekomendasi')}
+                  className={`px-2 py-0.5 rounded-lg transition-all cursor-pointer ${
+                    orderDenomSort === 'rekomendasi'
+                      ? 'bg-amber-500 text-white shadow-xs font-black'
+                      : 'text-slate-600 hover:text-slate-900'
+                  }`}
+                >
+                  ⭐ Rekomendasi
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setOrderDenomSort('termurah')}
+                  className={`px-2 py-0.5 rounded-lg transition-all cursor-pointer ${
+                    orderDenomSort === 'termurah'
+                      ? 'bg-emerald-600 text-white shadow-xs font-black'
+                      : 'text-slate-600 hover:text-slate-900'
+                  }`}
+                >
+                  💰 Termurah
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setOrderDenomSort('termahal')}
+                  className={`px-2 py-0.5 rounded-lg transition-all cursor-pointer ${
+                    orderDenomSort === 'termahal'
+                      ? 'bg-indigo-600 text-white shadow-xs font-black'
+                      : 'text-slate-600 hover:text-slate-900'
+                  }`}
+                >
+                  💎 Termahal
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setOrderDenomSort('all')}
+                  className={`px-2 py-0.5 rounded-lg transition-all cursor-pointer ${
+                    orderDenomSort === 'all'
+                      ? 'bg-slate-800 text-white shadow-xs font-black'
+                      : 'text-slate-600 hover:text-slate-900'
+                  }`}
+                >
+                  Semua
+                </button>
+              </div>
+            </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 max-h-48 overflow-y-auto pr-1">
-              {siblingProducts.map((p) => {
+              {sortedSiblingProducts.map((p) => {
                 const isSelected = selectedProduct.code === p.code;
                 const pPrice = p.sellPrice || p.price;
+                const isRec = isOrderRecommended(p);
                 return (
                   <button
                     key={p.code}
                     id={`denom-select-${p.code}`}
                     type="button"
                     onClick={() => setSelectedProduct(p)}
-                    className={`p-3 rounded-xl text-left border transition-all cursor-pointer flex items-center justify-between shadow-sm ${
+                    className={`p-3 rounded-xl text-left border transition-all cursor-pointer flex items-center justify-between shadow-sm relative ${
                       isSelected
-                        ? 'bg-indigo-50 border-indigo-500 text-indigo-950 font-bold'
+                        ? 'bg-indigo-50 border-indigo-500 text-indigo-950 font-bold ring-1 ring-indigo-500'
                         : 'bg-white border-slate-200 text-slate-700 hover:border-slate-300'
                     }`}
                   >
-                    <div>
-                      <p className="font-extrabold text-xs truncate text-slate-900">{p.name}</p>
+                    <div className="pr-2 min-w-0">
+                      <div className="flex items-center gap-1.5 flex-wrap mb-0.5">
+                        <p className="font-extrabold text-xs truncate text-slate-900">{p.name}</p>
+                        {isRec && (
+                          <span className="text-[8px] font-black px-1.5 py-0.2 rounded bg-amber-100 text-amber-800 border border-amber-200">
+                            ⭐ Rekomendasi
+                          </span>
+                        )}
+                      </div>
                       <p className="text-[10px] text-indigo-600 font-mono">{p.code}</p>
                     </div>
-                    <span className="text-xs font-black text-slate-900 font-mono">
+                    <span className="text-xs font-black text-slate-900 font-mono shrink-0">
                       Rp {Number(pPrice || 0).toLocaleString('id-ID')}
                     </span>
                   </button>

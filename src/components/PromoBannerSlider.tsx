@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ChevronLeft, ChevronRight, Sparkles, ShieldCheck, Flame, ArrowRight, Gamepad2, Gift, Zap } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Sparkles, ArrowRight } from 'lucide-react';
 
 interface PromoSlide {
   id: string;
@@ -10,6 +10,7 @@ interface PromoSlide {
   bgGradient: string;
   accentColor: string;
   imageUrl: string;
+  gameBadge: string;
   ctaText: string;
   ctaCategory?: string;
 }
@@ -19,47 +20,51 @@ const PROMO_SLIDES: PromoSlide[] = [
     id: 'promo-1',
     title: 'Mobile Legends: Bang Bang',
     subtitle: 'Weekly Diamond Pass & Diamond Fast Delivery 24 Jam. Proses 1-3 Detik Otomatis!',
-    tag: '⚡ PROMO SUPER KILAT',
-    tagColor: 'bg-amber-100 text-amber-900 border-amber-300',
-    bgGradient: 'from-blue-600 via-indigo-600 to-cyan-500',
+    tag: '⚡ PROMO SPESIAL MLBB',
+    tagColor: 'bg-amber-400 text-slate-950 border-amber-300 font-black',
+    bgGradient: 'from-blue-900 via-indigo-900 to-slate-950',
     accentColor: 'text-amber-300',
-    imageUrl: 'https://images.unsplash.com/photo-1542751371-adc38448a05e?w=800&auto=format&fit=crop&q=80',
+    imageUrl: 'https://images.unsplash.com/photo-1542751371-adc38448a05e?w=1000&auto=format&fit=crop&q=85',
+    gameBadge: 'Mobile Legends',
     ctaText: 'Top Up MLBB Sekarang',
     ctaCategory: 'Mobile Legends',
   },
   {
     id: 'promo-2',
-    title: 'Free Fire Booyah Pass & Diamond',
-    subtitle: 'Diskon Spesial Member Mingguan & Bulanan. Murah, Aman, dan Resmi 100%.',
-    tag: '🔥 DISKON TERBESAR',
-    tagColor: 'bg-rose-100 text-rose-900 border-rose-300',
-    bgGradient: 'from-rose-600 via-orange-600 to-amber-500',
-    accentColor: 'text-amber-200',
-    imageUrl: 'https://images.unsplash.com/photo-1511512578047-dfb367046420?w=800&auto=format&fit=crop&q=80',
+    title: 'Free Fire MAX & Booyah Pass',
+    subtitle: 'Diskon Spesial Member Mingguan, Bulanan & Diamond Resmi 100% Langsung Masuk.',
+    tag: '🔥 FLASH SALE FF',
+    tagColor: 'bg-rose-500 text-white border-rose-400 font-black',
+    bgGradient: 'from-orange-950 via-rose-900 to-slate-950',
+    accentColor: 'text-orange-300',
+    imageUrl: 'https://images.unsplash.com/photo-1511512578047-dfb367046420?w=1000&auto=format&fit=crop&q=85',
+    gameBadge: 'Free Fire',
     ctaText: 'Beli Diamond FF',
     ctaCategory: 'Free Fire',
   },
   {
     id: 'promo-3',
-    title: 'Token PLN & Pascabayar Real-Time',
-    subtitle: 'Token PLN Prabayar 24 Jam Nonstop & Cek Tagihan Pascabayar dengan biaya admin termurah.',
+    title: 'Token PLN Prabayar & Tagihan',
+    subtitle: 'Token PLN 24 Jam Nonstop & Cek Tagihan Listrik Pascabayar dengan biaya admin termurah.',
     tag: '💡 LAYANAN 24 JAM',
-    tagColor: 'bg-emerald-100 text-emerald-900 border-emerald-300',
-    bgGradient: 'from-emerald-600 via-teal-600 to-cyan-600',
-    accentColor: 'text-emerald-200',
-    imageUrl: 'https://images.unsplash.com/photo-1473341304170-971dccb5ac1e?w=800&auto=format&fit=crop&q=80',
+    tagColor: 'bg-emerald-400 text-slate-950 border-emerald-300 font-black',
+    bgGradient: 'from-emerald-950 via-teal-900 to-slate-950',
+    accentColor: 'text-emerald-300',
+    imageUrl: 'https://images.unsplash.com/photo-1473341304170-971dccb5ac1e?w=1000&auto=format&fit=crop&q=85',
+    gameBadge: 'Token PLN',
     ctaText: 'Beli Token Listrik',
     ctaCategory: 'PLN',
   },
   {
     id: 'promo-4',
-    title: 'Deposit Mudah & Cepat via QRIS',
-    subtitle: 'Isi saldo akun Ibad Store menggunakan QRIS, Virtual Account BRI/BNI/BCA dengan verifikasi otomatis 24 jam.',
+    title: 'Deposit Instan & Otomatis QRIS',
+    subtitle: 'Isi saldo akun kapan saja dengan QRIS All Payment & Virtual Account dengan verifikasi instan.',
     tag: '💳 DEPOSIT OTOMATIS',
-    tagColor: 'bg-cyan-100 text-cyan-900 border-cyan-300',
-    bgGradient: 'from-indigo-600 via-violet-600 to-pink-500',
-    accentColor: 'text-cyan-200',
-    imageUrl: 'https://images.unsplash.com/photo-1559526324-4b87b5e36e44?w=800&auto=format&fit=crop&q=80',
+    tagColor: 'bg-cyan-400 text-slate-950 border-cyan-300 font-black',
+    bgGradient: 'from-violet-950 via-indigo-900 to-slate-950',
+    accentColor: 'text-cyan-300',
+    imageUrl: 'https://images.unsplash.com/photo-1559526324-4b87b5e36e44?w=1000&auto=format&fit=crop&q=85',
+    gameBadge: 'QRIS & VA',
     ctaText: 'Isi Saldo Akun',
     ctaCategory: 'DEPOSIT',
   },
@@ -105,44 +110,46 @@ export const PromoBannerSlider: React.FC<PromoBannerSliderProps> = ({
 
   return (
     <div
-      className="relative w-full rounded-3xl overflow-hidden border border-slate-200/80 shadow-xl group"
+      className="relative w-full rounded-3xl overflow-hidden border border-slate-200 shadow-xl group"
       onMouseEnter={() => setIsPaused(true)}
       onMouseLeave={() => setIsPaused(false)}
     >
       {/* Background Gradient & Pattern */}
-      <div className={`relative min-h-[260px] sm:min-h-[300px] bg-gradient-to-r ${current.bgGradient} p-6 sm:p-10 flex flex-col justify-between transition-all duration-700 text-white`}>
-        {/* Decorative Background Glows */}
+      <div className={`relative min-h-[250px] sm:min-h-[290px] bg-gradient-to-r ${current.bgGradient} p-5 sm:p-8 lg:p-10 flex flex-col justify-between transition-all duration-700 text-white overflow-hidden`}>
+        {/* Glow Effects */}
         <div className="absolute top-0 right-1/4 w-96 h-96 bg-white/10 rounded-full blur-3xl pointer-events-none -mr-20 -mt-20"></div>
-        <div className="absolute bottom-0 right-0 w-80 h-80 bg-black/10 rounded-full blur-3xl pointer-events-none"></div>
 
-        {/* Backdrop Image Overlay for Game Atmosphere */}
-        <div className="absolute top-0 right-0 h-full w-full sm:w-1/2 opacity-30 sm:opacity-40 pointer-events-none overflow-hidden mix-blend-overlay">
-          <img
-            src={current.imageUrl}
-            alt={current.title}
-            className="w-full h-full object-cover object-center transform scale-105 group-hover:scale-110 transition-transform duration-1000"
-          />
-          <div className="absolute inset-0 bg-gradient-to-r from-slate-900/60 via-transparent to-transparent"></div>
+        {/* Clear & Visible Artwork Card */}
+        <div className="absolute top-0 right-0 h-full w-2/5 sm:w-1/2 lg:w-5/12 pointer-events-none overflow-hidden flex items-center justify-end">
+          <div className="relative w-full h-full">
+            <img
+              src={current.imageUrl}
+              alt={current.title}
+              className="w-full h-full object-cover object-center opacity-85 group-hover:opacity-100 group-hover:scale-105 transition-all duration-700"
+            />
+            {/* Smooth Edge Blend */}
+            <div className="absolute inset-y-0 left-0 w-24 sm:w-36 bg-gradient-to-r from-transparent to-transparent pointer-events-none"></div>
+            <div className="absolute inset-0 bg-gradient-to-r from-slate-950 via-slate-950/40 to-transparent"></div>
+          </div>
         </div>
 
         {/* Content Container */}
-        <div className="relative z-10 max-w-xl space-y-3.5">
+        <div className="relative z-10 max-w-lg lg:max-w-xl space-y-3">
           <div className="flex items-center gap-2">
-            <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-black border tracking-wide shadow-md ${current.tagColor}`}>
+            <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] sm:text-xs font-black border tracking-wide shadow-md ${current.tagColor}`}>
               <Sparkles className="w-3.5 h-3.5" />
               {current.tag}
             </span>
-            <span className="hidden sm:inline-flex items-center gap-1 text-[11px] text-white/90 bg-black/20 backdrop-blur-md px-2.5 py-1 rounded-full border border-white/20 font-semibold">
-              <ShieldCheck className="w-3.5 h-3.5 text-emerald-300" />
-              <span>Gateway Resmi Atlantic H2H</span>
+            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-white/15 backdrop-blur-md text-white border border-white/20">
+              {current.gameBadge}
             </span>
           </div>
 
-          <h2 className="text-2xl sm:text-3xl lg:text-4xl font-black text-white tracking-tight leading-tight drop-shadow-md">
+          <h2 className="text-xl sm:text-3xl lg:text-4xl font-black text-white tracking-tight leading-tight drop-shadow-md">
             {current.title}
           </h2>
 
-          <p className="text-xs sm:text-sm text-white/90 leading-relaxed font-medium drop-shadow-sm max-w-lg">
+          <p className="text-xs sm:text-sm text-slate-200 leading-relaxed font-medium drop-shadow-sm max-w-md">
             {current.subtitle}
           </p>
 
@@ -150,7 +157,7 @@ export const PromoBannerSlider: React.FC<PromoBannerSliderProps> = ({
             <button
               id={`promo-cta-${current.id}`}
               onClick={handleCtaClick}
-              className="px-5 py-2.5 bg-white hover:bg-slate-50 text-slate-900 font-extrabold rounded-xl text-xs sm:text-sm shadow-xl shadow-black/10 flex items-center gap-2 cursor-pointer transition-all active:scale-95"
+              className="px-5 py-2.5 bg-white hover:bg-slate-100 text-slate-950 font-black rounded-xl text-xs sm:text-sm shadow-xl shadow-black/20 flex items-center gap-2 cursor-pointer transition-all active:scale-95 hover:shadow-indigo-500/25"
             >
               <span>{current.ctaText}</span>
               <ArrowRight className="w-4 h-4 text-indigo-600" />
@@ -159,7 +166,7 @@ export const PromoBannerSlider: React.FC<PromoBannerSliderProps> = ({
         </div>
 
         {/* Bottom Pagination & Navigation Controls */}
-        <div className="relative z-10 flex items-center justify-between pt-6">
+        <div className="relative z-10 flex items-center justify-between pt-4 sm:pt-6">
           <div className="flex items-center gap-2">
             {PROMO_SLIDES.map((slide, idx) => (
               <button
@@ -178,14 +185,14 @@ export const PromoBannerSlider: React.FC<PromoBannerSliderProps> = ({
           <div className="flex items-center gap-2">
             <button
               onClick={prevSlide}
-              className="p-2 rounded-full bg-black/20 hover:bg-black/40 text-white backdrop-blur-md border border-white/20 transition-all cursor-pointer"
+              className="p-2 rounded-full bg-black/30 hover:bg-black/50 text-white backdrop-blur-md border border-white/20 transition-all cursor-pointer"
               aria-label="Previous Promo"
             >
               <ChevronLeft className="w-4 h-4" />
             </button>
             <button
               onClick={nextSlide}
-              className="p-2 rounded-full bg-black/20 hover:bg-black/40 text-white backdrop-blur-md border border-white/20 transition-all cursor-pointer"
+              className="p-2 rounded-full bg-black/30 hover:bg-black/50 text-white backdrop-blur-md border border-white/20 transition-all cursor-pointer"
               aria-label="Next Promo"
             >
               <ChevronRight className="w-4 h-4" />

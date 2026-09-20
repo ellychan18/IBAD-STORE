@@ -17,9 +17,11 @@ import { UserDashboard } from './components/UserDashboard.js';
 import { InvoiceModal } from './components/InvoiceModal.js';
 import { AdminPanel } from './components/AdminPanel.js';
 import { EditProfileModal } from './components/EditProfileModal.js';
+import { TopLeaderboard } from './components/TopLeaderboard.js';
+import { BottomNav } from './components/BottomNav.js';
 
 export default function App() {
-  const [activeTab, setActiveTab] = useState<'catalog' | 'postpaid' | 'tracker' | 'dashboard' | 'admin'>('catalog');
+  const [activeTab, setActiveTab] = useState<'catalog' | 'postpaid' | 'leaderboard' | 'tracker' | 'dashboard' | 'admin'>('catalog');
   const [user, setUser] = useState<User | null>(null);
   const [products, setProducts] = useState<ProductItem[]>([]);
   const [loadingProducts, setLoadingProducts] = useState(false);
@@ -120,7 +122,7 @@ export default function App() {
       />
 
       {/* Main App Container */}
-      <main className="flex-1 w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 space-y-8">
+      <main className="flex-1 w-full max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-4 sm:py-8 space-y-6 sm:space-y-8 pb-20 md:pb-8">
         {/* Promo Banner Slider with artwork imagery for Catalog View */}
         {activeTab === 'catalog' && (
           <PromoBannerSlider
@@ -155,6 +157,10 @@ export default function App() {
           />
         )}
 
+        {activeTab === 'leaderboard' && (
+          <TopLeaderboard onGoToCatalog={() => setActiveTab('catalog')} />
+        )}
+
         {activeTab === 'tracker' && (
           <OrderTracker onViewInvoice={(tx) => setActiveInvoice(tx)} />
         )}
@@ -182,6 +188,14 @@ export default function App() {
 
       {/* Footer */}
       <Footer onSelectTab={setActiveTab} />
+
+      {/* Mobile Bottom Navigation Bar (iPhone / Android / Tablet) */}
+      <BottomNav
+        activeTab={activeTab}
+        setActiveTab={setActiveTab}
+        user={user}
+        onOpenAuth={handleOpenAuth}
+      />
 
       {/* Global Modals */}
       <AuthModal

@@ -88,9 +88,9 @@ export const Footer: React.FC<FooterProps> = ({ onSelectTab }) => {
         <div className="mt-10 pt-6 border-t border-slate-200 flex flex-col sm:flex-row items-center justify-between gap-3 text-slate-500 text-[11px]">
           <p>© {new Date().getFullYear()} Ibad Store. Seluruh Hak Cipta Dilindungi.</p>
           <div className="flex items-center gap-4">
-            <span>Privasi &amp; Keamanan Terjamin</span>
+            <span>Privasi &amp; Keamanan Terjamin 100%</span>
             <span>•</span>
-            <span>Gateway Atlantic H2H Certified</span>
+            <span>Server Resmi &amp; Terverifikasi</span>
           </div>
         </div>
       </div>
